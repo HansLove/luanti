@@ -81,11 +81,11 @@ core.register_privilege("password", {
 })
 core.register_privilege("fly", {
 	description = S("Can use fly mode"),
-	give_to_singleplayer = false,
+	give_to_singleplayer = true,
 })
 core.register_privilege("fast", {
 	description = S("Can use fast mode"),
-	give_to_singleplayer = false,
+	give_to_singleplayer = true,
 })
 core.register_privilege("noclip", {
 	description = S("Can fly through solid nodes using noclip mode"),

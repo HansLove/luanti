@@ -68,6 +68,10 @@ end
 
 core.register_on_joinplayer(function(player)
 	local player_name = player:get_player_name()
+	if core.is_singleplayer() and core.get_worldpath():find("Haxel", 1, true) then
+		core.chat_send_player(player_name,
+			"*** HashimaVoxel build — mundo Haxel bajo tu control de codigo ***")
+	end
 	if not core.is_singleplayer() then
 		local status = core.get_server_status(player_name, true)
 		if status and status ~= "" then

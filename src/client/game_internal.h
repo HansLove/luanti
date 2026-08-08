@@ -161,6 +161,7 @@ protected:
 	void openConsole(float scale, const wchar_t *line=NULL);
 	void toggleFreeMove();
 	void toggleFreeMoveAlt();
+	void updateHaxelFlyLimit(f32 dtime);
 	void togglePitchMove();
 	void toggleFast();
 	void toggleNoClip();
@@ -376,6 +377,9 @@ private:
 	f32  m_repeat_place_time;
 	f32  m_repeat_dig_time;
 	f32  m_cache_cam_smoothing;
+
+	static constexpr f32 HAXEL_FLY_MAX_SECONDS = 5.0f;
+	f32 m_haxel_fly_time_left = 0.0f;
 
 	bool m_invert_mouse;
 	bool m_enable_hotbar_mouse_wheel;
