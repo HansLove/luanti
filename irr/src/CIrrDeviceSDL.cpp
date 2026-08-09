@@ -43,6 +43,7 @@
 	#define SDL_KMOD_SHIFT KMOD_SHIFT
 	#define SDL_KMOD_CTRL  KMOD_CTRL
 	#define SDL_KMOD_NUM   KMOD_NUM
+	#define SDL_KMOD_GUI   KMOD_GUI
 
 	#define SDL_TextInputActive(unused) SDL_IsTextInputActive()
 	#define SDL_GL_DestroyContext SDL_GL_DeleteContext
@@ -157,6 +158,18 @@ EM_BOOL CIrrDeviceSDL::MouseLeaveCallback(int eventType, const EmscriptenMouseEv
 	return EM_FALSE;
 }
 #endif
+
+// On macOS, Cmd is the primary shortcut modifier but Irrlicht only checks Control.
+static bool isShortcutModifier(SDL_Keymod keymod)
+{
+	if ((keymod & SDL_KMOD_CTRL) != 0)
+		return true;
+#if defined(__APPLE__)
+	if ((keymod & SDL_KMOD_GUI) != 0)
+		return true;
+#endif
+	return false;
+}
 
 bool CIrrDeviceSDL::keyIsKnownSpecial(EKEY_CODE irrlichtKey)
 {
@@ -880,7 +893,7 @@ bool CIrrDeviceSDL::run()
 
 			irrevent.MouseInput.ButtonStates = MouseButtonStates;
 			irrevent.MouseInput.Shift = (keymod & SDL_KMOD_SHIFT) != 0;
-			irrevent.MouseInput.Control = (keymod & SDL_KMOD_CTRL) != 0;
+			irrevent.MouseInput.Control = isShortcutModifier(keymod);
 
 			postEventFromUser(irrevent);
 			break;
@@ -899,7 +912,7 @@ bool CIrrDeviceSDL::run()
 #endif
 			irrevent.MouseInput.ButtonStates = MouseButtonStates;
 			irrevent.MouseInput.Shift = (keymod & SDL_KMOD_SHIFT) != 0;
-			irrevent.MouseInput.Control = (keymod & SDL_KMOD_CTRL) != 0;
+			irrevent.MouseInput.Control = isShortcutModifier(keymod);
 			irrevent.MouseInput.X = MouseX;
 			irrevent.MouseInput.Y = MouseY;
 
@@ -975,7 +988,7 @@ bool CIrrDeviceSDL::run()
 			}
 
 			bool shift = (keymod & SDL_KMOD_SHIFT) != 0;
-			bool control = (keymod & SDL_KMOD_CTRL) != 0;
+			bool control = isShortcutModifier(keymod);
 			if (irrevent.MouseInput.Event != EMIE_MOUSE_MOVED) {
 				irrevent.MouseInput.ButtonStates = MouseButtonStates;
 				irrevent.MouseInput.X = static_cast<s32>(SDL_event.button.x * ScaleX);
@@ -1033,14 +1046,14 @@ bool CIrrDeviceSDL::run()
 
 			// Make sure to only input special characters if something is in focus,
 			// as SDL_EVENT_TEXT_INPUT handles normal unicode already
-			if (SDL_TextInputActive(Window) && !keyIsKnownSpecial(key) && (keymod & SDL_KMOD_CTRL) == 0)
+			if (SDL_TextInputActive(Window) && !keyIsKnownSpecial(key) && !isShortcutModifier(keymod))
 				break;
 
 			irrevent.EventType = EET_KEY_INPUT_EVENT;
 			irrevent.KeyInput.Key = key;
 			irrevent.KeyInput.PressedDown = (SDL_event.type == SDL_EVENT_KEY_DOWN);
 			irrevent.KeyInput.Shift = (keymod & SDL_KMOD_SHIFT) != 0;
-			irrevent.KeyInput.Control = (keymod & SDL_KMOD_CTRL) != 0;
+			irrevent.KeyInput.Control = isShortcutModifier(keymod);
 #ifdef _IRR_USE_SDL3_
 			{
 				// Look up the printable character (like in an input box)
