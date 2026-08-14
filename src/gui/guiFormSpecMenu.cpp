@@ -125,6 +125,8 @@ GUIFormSpecMenu::GUIFormSpecMenu(gui::IGUIElement *parent, s32 id, IMenuManager 
 {
 	current_keys_pending.key_down = false;
 	current_keys_pending.key_up = false;
+	current_keys_pending.key_left = false;
+	current_keys_pending.key_right = false;
 	current_keys_pending.key_enter = false;
 
 	m_tooltip_show_delay = (u32)g_settings->getS32("tooltip_show_delay");
@@ -4277,6 +4279,16 @@ void GUIFormSpecMenu::acceptInput(FormspecQuitMode quitmode)
 			current_keys_pending.key_up = false;
 		}
 
+		if (current_keys_pending.key_left) {
+			fields["key_left"] = "true";
+			current_keys_pending.key_left = false;
+		}
+
+		if (current_keys_pending.key_right) {
+			fields["key_right"] = "true";
+			current_keys_pending.key_right = false;
+		}
+
 		if (current_keys_pending.key_enter) {
 			fields["key_enter"] = "true";
 			current_keys_pending.key_enter = false;
@@ -4557,7 +4569,9 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 		if (event.KeyInput.PressedDown &&
 			(event.KeyInput.Key==KEY_RETURN ||
 			 event.KeyInput.Key==KEY_UP ||
-			 event.KeyInput.Key==KEY_DOWN)
+			 event.KeyInput.Key==KEY_DOWN ||
+			 event.KeyInput.Key==KEY_LEFT ||
+			 event.KeyInput.Key==KEY_RIGHT)
 			) {
 			switch (event.KeyInput.Key) {
 				case KEY_RETURN:
@@ -4569,7 +4583,12 @@ bool GUIFormSpecMenu::OnEvent(const SEvent& event)
 				case KEY_DOWN:
 					current_keys_pending.key_down = true;
 					break;
-				break;
+				case KEY_LEFT:
+					current_keys_pending.key_left = true;
+					break;
+				case KEY_RIGHT:
+					current_keys_pending.key_right = true;
+					break;
 				default:
 					//can't happen at all!
 					FATAL_ERROR("Reached a source line that can't ever been reached");

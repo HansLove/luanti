@@ -23,7 +23,7 @@ function mm_game_theme.set_engine(hide_decorations)
 	mm_game_theme.gameid = nil
 	mm_game_theme.stop_music()
 
-	core.set_topleft_text("")
+	core.set_topleft_text("Haxel Edition")
 
 	local have_bg = false
 	local have_overlay = mm_game_theme.set_engine_single("overlay")

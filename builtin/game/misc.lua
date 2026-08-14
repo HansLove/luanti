@@ -68,6 +68,16 @@ end
 
 core.register_on_joinplayer(function(player)
 	local player_name = player:get_player_name()
+	if core.is_singleplayer() then
+		local worldpath = core.get_worldpath()
+		if worldpath:find("Haxel", 1, true) then
+			core.chat_send_player(player_name,
+				"*** HashimaVoxel build — mundo Haxel bajo tu control de codigo ***")
+		elseif worldpath:find("Hashimon", 1, true) then
+			core.chat_send_player(player_name,
+				"*** Hashimon Vortex — /hashimon login <token> then /hashimon sync ***")
+		end
+	end
 	if not core.is_singleplayer() then
 		local status = core.get_server_status(player_name, true)
 		if status and status ~= "" then

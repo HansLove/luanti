@@ -558,6 +558,7 @@ void Game::run()
 		updateCameraOffset();
 
 		processUserInput(dtime);
+		updateHaxelFlyLimit(dtime);
 		// Update camera before player movement to avoid camera lag of one frame
 		updateCameraDirection(&cam_view_target, dtime);
 		if (m_cache_cam_smoothing <= 0.0f) {
@@ -905,7 +906,7 @@ bool Game::createClient(const GameStartData &start_data)
 	 */
 	auto driver_name = driver->getName();
 	std::string str = std::string(PROJECT_NAME_C) +
-			" " + g_version_hash + " [";
+			" " + g_version_hash + " | Haxel [";
 	str += simple_singleplayer_mode ? gettext("Singleplayer")
 			: gettext("Multiplayer");
 	str += "] [";
@@ -1647,14 +1648,34 @@ void Game::toggleFreeMove()
 	g_settings->set("free_move", bool_to_cstr(free_move));
 
 	if (free_move) {
-		if (client->checkPrivilege("fly")) {
-			m_game_ui->showTranslatedStatusText("Fly mode enabled");
+		m_haxel_fly_time_left = HAXEL_FLY_MAX_SECONDS;
+		if (client->checkPrivilege("fly") || simple_singleplayer_mode) {
+			m_game_ui->showTranslatedStatusText("Fly mode enabled (5s max)");
 		} else {
 			m_game_ui->showTranslatedStatusText("Fly mode enabled (note: no 'fly' privilege)");
 		}
 	} else {
+		m_haxel_fly_time_left = 0.0f;
 		m_game_ui->showTranslatedStatusText("Fly mode disabled");
 	}
+}
+
+void Game::updateHaxelFlyLimit(f32 dtime)
+{
+	if (m_haxel_fly_time_left <= 0.0f || !g_settings->getBool("free_move"))
+		return;
+
+	if (!client->checkPrivilege("fly") && !simple_singleplayer_mode)
+		return;
+
+	m_haxel_fly_time_left -= dtime;
+	if (m_haxel_fly_time_left > 0.0f)
+		return;
+
+	m_haxel_fly_time_left = 0.0f;
+	g_settings->set("free_move", "false");
+	m_cache_enable_free_move = false;
+	m_game_ui->showTranslatedStatusText("Fly time expired (5s limit)");
 }
 
 void Game::toggleFreeMoveAlt()
