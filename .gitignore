@@ -69,6 +69,7 @@ AppDir
 /screenshots
 /sounds
 /mods/*
+!/mods/hashimon*
 !/mods/mods_here.txt
 /worlds/*
 !/worlds/worlds_here.txt

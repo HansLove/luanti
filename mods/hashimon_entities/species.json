@@ -1,0 +1,80 @@
+{
+  "s001": {
+    "name": "Hashimon",
+    "type": "pixel",
+    "type2": null,
+    "species": "genesis"
+  },
+  "solarCub": {
+    "name": "Solar Cub",
+    "type": "fuego",
+    "type2": null,
+    "species": "lion"
+  },
+  "s002": {
+    "name": "Bacon Brigade",
+    "type": "metal",
+    "type2": null,
+    "species": "brigade"
+  },
+  "glitchPup": {
+    "name": "Glitchpup",
+    "type": "pixel",
+    "type2": null,
+    "species": "glitchpup"
+  },
+  "voltKit": {
+    "name": "Voltkit",
+    "type": "electrico",
+    "type2": null,
+    "species": "voltkit"
+  },
+  "v001": {
+    "name": "Call Me Kale",
+    "type": "tierra",
+    "type2": "agua",
+    "species": "kale"
+  },
+  "v002": {
+    "name": "Archie Artichoke",
+    "type": "tierra",
+    "type2": null,
+    "species": "artichoke"
+  },
+  "f001": {
+    "name": "Portobello Express",
+    "type": "hongo",
+    "type2": null,
+    "species": "portobello"
+  },
+  "f002": {
+    "name": "Ninzauu",
+    "type": "sueno",
+    "type2": null,
+    "species": "ninzauu"
+  },
+  "astralFawn": {
+    "name": "Astral Fawn",
+    "type": "astro",
+    "type2": null,
+    "species": "astralfawn"
+  },
+  "psyMoth": {
+    "name": "Psymoth",
+    "type": "mental",
+    "type2": null,
+    "species": "psymoth"
+  },
+  "tideKit": {
+    "name": "Tidekit",
+    "type": "agua",
+    "type2": null,
+    "species": "tidekit"
+  },
+  "gustling": {
+    "name": "Gustling",
+    "type": "aire",
+    "type2": null,
+    "species": "gustling"
+  }
+}
