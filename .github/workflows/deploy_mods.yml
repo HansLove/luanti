@@ -1,0 +1,58 @@
+---
+name: deploy_mods
+
+# Hashimon's own mods cannot ride in the Docker image: the unit bind-mounts the
+# whole data path over the container, so anything baked under $data/mods gets
+# masked. They are host state, hence a pipeline separate from deploy.yml.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'mods/**'
+      - '.github/workflows/deploy_mods.yml'
+  workflow_dispatch:
+
+env:
+  # Ansible creates this directory owned by the deploy user. Everything in it is
+  # ours, which is what makes --delete safe; the third-party mods are siblings
+  # one level up and are never in the transfer.
+  MODPACK_DIR: /var/lib/minetest/data/mods/hashimon
+
+# Same literal group as deploy.yml: both restart luanti-server, and the default
+# cancel-in-progress: false makes them queue instead of interleaving restarts.
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync mods and restart
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          # The default shell is `bash -e {0}`: -e but no pipefail.
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          SSH_OPTS=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new)
+
+          # Trailing slash on the source: the *contents* of mods/ are mirrored
+          # into the modpack, so --delete propagates a mod removed from the repo.
+          # --chmod is not defensive: the container runs as uid 30000 in its own
+          # namespace, so it is neither owner nor group member and reads purely
+          # via the other bits. Without this, a mod committed 640 would be
+          # unreadable to the server.
+          rsync -a --delete --chmod=Fa+r,Da+rx \
+            -e "ssh ${SSH_OPTS[*]}" \
+            mods/ "$SSH_USER@$SSH_HOST:$MODPACK_DIR/"
+
+          # Luanti has no hot mod reload; this drops connected players.
+          ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" 'sudo systemctl restart luanti-server'

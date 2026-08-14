@@ -71,6 +71,7 @@ AppDir
 /mods/*
 !/mods/hashimon*
 !/mods/mods_here.txt
+!/mods/modpack.conf
 /worlds/*
 !/worlds/worlds_here.txt
 /clientmods/*
