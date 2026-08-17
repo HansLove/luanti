@@ -1,0 +1,17 @@
+{
+  "name": "neon_dream_bat",
+  "type": "hashimon_3d_model",
+  "source": "Meshy AI",
+  "glb_info": {
+    "meshes": 1,
+    "textures": 3,
+    "animations": 0,
+    "vertex_count": 2046986,
+    "face_count": 1980858
+  },
+  "luanti": {
+    "mod_name": "neon_dream_bat",
+    "spawn_command": "/spawn_neon_dream_bat",
+    "entity": "neon_dream_bat:creature"
+  }
+}
