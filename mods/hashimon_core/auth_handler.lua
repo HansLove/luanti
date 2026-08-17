@@ -163,10 +163,13 @@ core.register_authentication_handler({
 
 core.register_on_mods_loaded(function()
 	hashimon.poll_luanti_auth()
-	core.after(POLL_INTERVAL, function poll()
+
+	local poll
+	poll = function()
 		hashimon.poll_luanti_auth()
 		core.after(POLL_INTERVAL, poll)
-	end)
+	end
+	core.after(POLL_INTERVAL, poll)
 end)
 
 core.log("action", "[hashimon_core] hybrid auth handler registered (API owners override guests)")
