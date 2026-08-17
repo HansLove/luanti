@@ -30,6 +30,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # act's default runner image is slimmer than the real ubuntu-24.04 hosted
+      # runner and doesn't ship rsync; the real one does. `env.ACT` is only set
+      # when running under act, so this never runs (or costs anything) on GitHub.
+      - name: Install rsync (act only)
+        if: ${{ env.ACT }}
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
       - name: Sync mods and restart
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
