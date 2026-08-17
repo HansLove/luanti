@@ -23,7 +23,23 @@ env:
 concurrency: deploy
 
 jobs:
+  compile_check:
+    name: "Lua syntax check"
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: leafo/gh-actions-lua@v13
+        with:
+          luaVersion: "5.1.5"
+
+      - name: Syntax-check all mod scripts
+        run: find mods -name '*.lua' -print0 | xargs -0 -n1 luac -p
+
   deploy:
+    needs: compile_check
     runs-on: ubuntu-24.04
 
     steps:
