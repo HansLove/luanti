@@ -1,0 +1,17 @@
+{
+  "name": "glowcap_sprout",
+  "type": "hashimon_3d_model",
+  "source": "Meshy AI",
+  "glb_info": {
+    "meshes": 1,
+    "textures": 3,
+    "animations": 0,
+    "vertex_count": 5034,
+    "face_count": 2173
+  },
+  "luanti": {
+    "mod_name": "glowcap_sprout",
+    "spawn_command": "/spawn_glowcap_sprout",
+    "entity": "glowcap_sprout:creature"
+  }
+}

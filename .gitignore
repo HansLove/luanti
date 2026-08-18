@@ -70,8 +70,17 @@ AppDir
 /sounds
 /mods/*
 !/mods/hashimon*
+!/mods/discovery_maps/
+!/mods/discovery_maps/**
+!/mods/neon_dream_bat/
+!/mods/neon_dream_bat/**
+!/mods/glowcap_sprout/
+!/mods/glowcap_sprout/**
 !/mods/mods_here.txt
 !/mods/modpack.conf
+# Keep Meshy GLB binaries out of git (large); clone + convert_mesh.py locally
+/mods/neon_dream_bat/*.glb
+/mods/glowcap_sprout/*.glb
 /worlds/*
 !/worlds/worlds_here.txt
 /clientmods/*
