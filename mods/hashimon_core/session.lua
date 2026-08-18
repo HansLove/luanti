@@ -138,8 +138,8 @@ core.register_on_joinplayer(function(player, _last_login)
 end)
 
 core.register_chatcommand("hashimon", {
-	params = "<sync|status|login|file|logout|starter|session|attack>",
-	description = "Hashimon: sync roster (owners), status, debug login, attack",
+	params = "<sync|status|login|file|logout|starter|session|attack|media>",
+	description = "Hashimon: sync roster (owners), status, debug login, attack, media",
 	func = function(name, param)
 		local player = core.get_player_by_name(name)
 		if not player then
@@ -210,6 +210,35 @@ core.register_chatcommand("hashimon", {
 				end
 			end)
 			return true, "Checking status..."
+		end
+
+		if cmd == "media" then
+			if not core.check_player_privs(name, { server = true }) then
+				return false, "Requires the server privilege."
+			end
+			local sub = rest:match("^(%S*)") or ""
+			if sub == "reload" or sub == "" then
+				local n = hashimon.reload_media()
+				local total = 0
+				for _ in pairs(hashimon.media_registry) do total = total + 1 end
+				return true, string.format(
+					"Media registry: %d creature(s) known, %d dynamic file(s) (re)pushed.",
+					total, n
+				)
+			end
+			if sub == "list" then
+				local lines = {}
+				for dna, entry in pairs(hashimon.media_registry) do
+					table.insert(lines, string.format(
+						"%s... -> %s (%s)", dna:sub(1, 8), entry.mesh, entry.source
+					))
+				end
+				if #lines == 0 then
+					return true, "Media registry is empty."
+				end
+				return true, table.concat(lines, "\n")
+			end
+			return false, "Usage: /hashimon media <reload|list>"
 		end
 
 		if cmd == "attack" then

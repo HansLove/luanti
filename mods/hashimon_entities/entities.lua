@@ -236,12 +236,28 @@ core.register_entity("hashimon_entities:creature", {
 	setup = function(self, creature, owner)
 		self.creature = creature
 		self.owner = owner
-		local hex = hashimon.texture_color_for_creature(creature)
 		local size = hashimon.visual_size_for_creature(creature)
-		self.object:set_properties({
-			textures = { "hashimon_placeholder.png^[colorize:#" .. hex .. ":255" },
-			visual_size = { x = size, y = size },
-		})
+
+		-- A registered 3D model (Meshy-generated, dropped into hashimon_media/
+		-- or bundled with a mod) always wins over the sprite/colorize fallback.
+		-- See hashimon_core/media.lua for how creature.dna resolves here.
+		local media = hashimon.resolve_creature_media and hashimon.resolve_creature_media(creature)
+		if media then
+			self.object:set_properties({
+				visual = "mesh",
+				mesh = media.mesh,
+				textures = media.textures,
+				visual_size = { x = size, y = size },
+			})
+		else
+			local hex = hashimon.texture_color_for_creature(creature)
+			self.object:set_properties({
+				visual = "upright_sprite",
+				textures = { "hashimon_placeholder.png^[colorize:#" .. hex .. ":255" },
+				visual_size = { x = size, y = size },
+			})
+		end
+
 		self.object:set_nametag_attributes({
 			text = hashimon.nametag_for_creature(creature),
 			color = "#E0E7FF",

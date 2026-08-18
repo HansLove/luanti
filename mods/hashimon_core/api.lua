@@ -161,6 +161,42 @@ function hashimon.fetch_profile(token, callback)
 	end)
 end
 
+-- Blocking poll used at startup. Async fetch *callbacks* cannot run until after
+-- the host has already authenticated, so a first-join race treats API owners
+-- as local SRP guests and rejects the web password.
+-- io.popen is nil in the Lua sandbox; poll fetch_async_get instead (HTTP thread
+-- can finish while we wait).
+function hashimon.fetch_luanti_auth_sync(secret)
+	if not hashimon.http or not hashimon.http.fetch_async or not hashimon.http.fetch_async_get then
+		return false, "http_unavailable", nil
+	end
+	local handle = hashimon.http.fetch_async({
+		url = hashimon.get_api_url() .. "/internal/luanti-auth",
+		method = "GET",
+		timeout = 5,
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Accept", "application/json" },
+		}),
+	})
+	local deadline = os.clock() + 5
+	local res
+	repeat
+		res = hashimon.http.fetch_async_get(handle)
+	until (res and res.completed) or os.clock() >= deadline
+	if not res or not res.completed then
+		return false, "timeout", nil
+	end
+	if res.code ~= 200 then
+		return false, http_failure_code(res), nil
+	end
+	local body = parse_json_or_nil(res.data)
+	if not body or type(body.accounts) ~= "table" then
+		return false, "invalid_response", nil
+	end
+	return true, nil, body.accounts
+end
+
 function hashimon.fetch_luanti_auth(secret, callback)
 	hashimon.http_request({
 		url = hashimon.get_api_url() .. "/internal/luanti-auth",
