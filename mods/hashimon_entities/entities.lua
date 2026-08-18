@@ -28,6 +28,7 @@ local TYPE_COLORS = {
 	agua = "3B82F6",
 	onda = "14B8A6",
 	electrico = "EAB308",
+	["eléctrico"] = "EAB308", -- compiler.ts's TYPES/ELEMENT_PALETTES key (with accent); species.json genesis_electrico uses this
 	tierra = "92400E",
 	aire = "67E8F9",
 	astro = "6366F1",
@@ -179,6 +180,41 @@ function hashimon.clear_player_entities(player_name)
 	hashimon._companion_queue = {}
 end
 
+--- Spawn one creature at pos, trying each render tier in order so a Hashimon
+--- never appears as nothing:
+---   1. Custom 3D media (Meshy/Blender GLB, via hashimon_core's media registry)
+---   2. Procedural voxel body (DNA-correct colour + shape, this mod)
+---   3. Sprite + colorize (last-resort safety net)
+local function spawn_creature_entity(pos, creature, owner)
+	local media = hashimon.resolve_creature_media and hashimon.resolve_creature_media(creature)
+	if media then
+		local obj = core.add_entity(pos, "hashimon_entities:creature")
+		if obj then
+			local ent = obj:get_luaentity()
+			if ent then
+				ent:setup(creature, owner)
+			end
+			return obj
+		end
+	end
+
+	if hashimon.spawn_voxel_creature then
+		local obj = hashimon.spawn_voxel_creature(pos, creature, owner)
+		if obj then
+			return obj
+		end
+	end
+
+	local obj = core.add_entity(pos, "hashimon_entities:creature")
+	if obj then
+		local ent = obj:get_luaentity()
+		if ent then
+			ent:setup(creature, owner)
+		end
+	end
+	return obj
+end
+
 function hashimon.spawn_roster(player_name, roster)
 	hashimon.clear_player_entities(player_name)
 	player_entities[player_name] = {}
@@ -189,31 +225,16 @@ function hashimon.spawn_roster(player_name, roster)
 	end
 
 	local center = spawn_center_for(player_name)
-	local entity_name = hashimon.use_companion
-		and "hashimon_entities:companion"
-		or "hashimon_entities:creature"
 
 	for i, creature in ipairs(roster) do
 		local pos = grid_pos(i, center)
-		if hashimon.use_companion then
-			hashimon.enqueue_companion_setup(player_name, creature)
-		end
-		local obj = core.add_entity(pos, entity_name)
+		local obj = spawn_creature_entity(pos, creature, player_name)
 		if obj then
-			if not hashimon.use_companion then
-				local ent = obj:get_luaentity()
-				if ent then
-					ent:setup(creature, player_name)
-				end
-			end
 			table.insert(player_entities[player_name], obj)
-		elseif hashimon.use_companion then
-			hashimon.dequeue_companion_setup()
 		end
 	end
 
-	local label = hashimon.use_companion and "companion(s)" or "creature(s)"
-	core.chat_send_player(player_name, "[Hashimon] Spawned " .. #roster .. " " .. label .. " nearby.")
+	core.chat_send_player(player_name, "[Hashimon] Spawned " .. #roster .. " creature(s) nearby.")
 end
 
 -- Sprite fallback when Animalia/Creatura are not loaded.

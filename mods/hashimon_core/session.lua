@@ -138,8 +138,8 @@ core.register_on_joinplayer(function(player, _last_login)
 end)
 
 core.register_chatcommand("hashimon", {
-	params = "<sync|status|login|file|logout|starter|session|attack|media>",
-	description = "Hashimon: sync roster (owners), status, debug login, attack, media",
+	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|worldpath>",
+	description = "Hashimon: sync roster (owners), status, debug login, attack, media, dna, worldpath",
 	func = function(name, param)
 		local player = core.get_player_by_name(name)
 		if not player then
@@ -239,6 +239,32 @@ core.register_chatcommand("hashimon", {
 				return true, table.concat(lines, "\n")
 			end
 			return false, "Usage: /hashimon media <reload|list>"
+		end
+
+		if cmd == "dna" then
+			-- The 3D preview only ever shows a truncated DNA (portal and chat
+			-- stats both do). Full DNA is needed to register custom media
+			-- (see hashimon_core/media.lua + scripts/register_hashimon_media.py),
+			-- so read it straight off the spawned roster entity's own data.
+			local roster = hashimon.get_roster_entities and hashimon.get_roster_entities(name) or {}
+			if #roster == 0 then
+				return false, "No Hashimon spawned. Use /hashimon sync first."
+			end
+			local idx = tonumber(rest) or 1
+			local ref = roster[idx]
+			if not ref or not ref:get_luaentity() then
+				return false, "Invalid index. Use /hashimon dna 1, 2, ..."
+			end
+			local creature = ref:get_luaentity().creature
+			if not creature or not creature.dna then
+				return false, "That entry has no DNA on record."
+			end
+			return true, string.format("[%d] %s — DNA: %s", idx, creature.name ~= "" and creature.name or (creature.speciesKey or "?"), creature.dna)
+		end
+
+		if cmd == "worldpath" then
+			return true, "World path: " .. core.get_worldpath() ..
+				"\nDrop custom media in: " .. core.get_worldpath() .. "/hashimon_media/"
 		end
 
 		if cmd == "attack" then
