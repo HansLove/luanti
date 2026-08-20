@@ -207,6 +207,18 @@ function hashimon.get_roster_entities(player_name)
 	return player_entities[player_name] or {}
 end
 
+--- Register an already-spawned entity into a player's roster, so it
+--- participates in roster-based commands (attack, /hashimon dna) and gets
+--- cleaned up on the next resync. For dev spawn paths that build the entity
+--- by hand instead of going through spawn_roster.
+function hashimon.register_roster_entity(player_name, obj)
+	if not obj then
+		return
+	end
+	player_entities[player_name] = player_entities[player_name] or {}
+	table.insert(player_entities[player_name], obj)
+end
+
 function hashimon.clear_player_entities(player_name)
 	local list = player_entities[player_name]
 	if not list then
