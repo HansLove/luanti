@@ -1029,7 +1029,9 @@ bool CIrrDeviceSDL::run()
 #else
 			auto keysym = SDL_event.key.keysym.sym;
 			auto scancode = SDL_event.key.keysym.scancode;
-			auto keymod = SDL_event.key.keysym.mod;
+			// SDL2 types keysym.mod as Uint16; SDL_Keymod is an enum, and gcc
+			// won't convert implicitly. Match the SDL3 branch's explicit type.
+			auto keymod = static_cast<SDL_Keymod>(SDL_event.key.keysym.mod);
 #endif
 
 			// Treat AC_BACK as the Escape key
