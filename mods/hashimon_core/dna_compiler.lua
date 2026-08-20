@@ -23,8 +23,10 @@ local MARKINGS = { "none", "stripes", "spots", "patches", "bands", "rings", "swi
 local MATERIALS = { "flesh", "fur", "scale", "feather", "chitin", "stone", "metal", "crystal" }
 
 -- Same bands as compiler.ts's ELEMENT_PALETTES. Keys use the accented Spanish
--- spelling ("eléctrico", "sueño") to match compiler.ts's TYPES array exactly —
--- species.json's `type` field must use these same spellings.
+-- spelling ("eléctrico", "sueño", "espíritu", "vacío") to match compiler.ts's
+-- TYPES array exactly — species.json's `type` field must use these same
+-- spellings. This is a lookup table (not an ordered list), so order here
+-- doesn't matter for parity — only the key spellings do.
 local ELEMENT_PALETTES = {
 	fuego = { 0, 30 },
 	agua = { 180, 240 },
@@ -36,11 +38,11 @@ local ELEMENT_PALETTES = {
 	["sueño"] = { 240, 300 },
 	magia = { 270, 330 },
 	metal = { 0, 20 },
-	robot = { 0, 20 },
-	plasma = { 350, 20 },
 	vegetal = { 100, 150 },
 	hongo = { 280, 340 },
 	mental = { 200, 260 },
+	["espíritu"] = { 160, 190 },
+	["vacío"] = { 260, 285 },
 }
 
 -- ---------------------------------------------------------------------------

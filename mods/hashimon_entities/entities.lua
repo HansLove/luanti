@@ -33,10 +33,16 @@ local TYPE_COLORS = {
 	aire = "67E8F9",
 	astro = "6366F1",
 	sueno = "C084FC",
+	["sueño"] = "C084FC",
 	magia = "EC4899",
 	metal = "94A3B8",
 	hongo = "84CC16",
 	mental = "F472B6",
+	vegetal = "22C55E",
+	espiritu = "5EEAD4",
+	["espíritu"] = "5EEAD4",
+	vacio = "312E81",
+	["vacío"] = "312E81",
 }
 
 local GRID_SPACING = 3
