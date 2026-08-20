@@ -42,13 +42,12 @@ core.register_entity("hashimon_entities:voxel_part", {
 	},
 })
 
--- Follow-owner movement, matching the tamed_follow_owner feel the old wolf
--- companion had. Rolled by hand instead of depending on Creatura's mob
--- framework because that framework assumes one mesh-based mob entity; ours
--- is a rigid composite (root + attached cubes), and attaching already makes
--- every child move with the root for free — only the root needs real motion.
-local FOLLOW_STOP_DISTANCE = 3 -- nodes; stop this close to the owner
-local FOLLOW_SPEED = 3.5 -- nodes/sec, matches the old wolf's speed
+-- Follow-owner movement (hashimon.step_follow_owner, entities.lua) matches
+-- the tamed_follow_owner feel the old wolf companion had. Rolled by hand
+-- instead of depending on Creatura's mob framework because that framework
+-- assumes one mesh-based mob entity; ours is a rigid composite (root +
+-- attached cubes), and attaching already makes every child move with the
+-- root for free — only the root needs real motion.
 local GRAVITY = -9.81
 -- The canine's own "forward" is +X in local space (see spawn_canine). Yaw 0
 -- faces +Z in Luanti, so a part built facing +X needs this offset to align
@@ -92,32 +91,7 @@ core.register_entity("hashimon_entities:voxel_root", {
 			return
 		end
 
-		if not self.owner then
-			return
-		end
-		local owner_obj = core.get_player_by_name(self.owner)
-		local vel = self.object:get_velocity()
-		if not owner_obj or not owner_obj:is_player() then
-			self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
-			return
-		end
-
-		local mypos = self.object:get_pos()
-		local ownerpos = owner_obj:get_pos()
-		local dx = ownerpos.x - mypos.x
-		local dz = ownerpos.z - mypos.z
-		local dist = math.sqrt(dx * dx + dz * dz)
-
-		if dist > FOLLOW_STOP_DISTANCE then
-			local speed = math.min(FOLLOW_SPEED, dist * 0.6)
-			self.object:set_velocity({
-				x = (dx / dist) * speed,
-				y = vel.y,
-				z = (dz / dist) * speed,
-			})
-		else
-			self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
-		end
+		hashimon.step_follow_owner(self)
 	end,
 
 	on_punch = function(self, puncher)

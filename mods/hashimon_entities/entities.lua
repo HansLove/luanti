@@ -49,6 +49,42 @@ local GRID_SPACING = 3
 local player_entities = {}
 local player_spawn_center = {}
 
+-- Follow-owner movement shared by every roster entity (sprite/mesh fallback
+-- here, procedural voxel body in voxel_body.lua). Straight-line steering
+-- toward the owner, matching the old wolf companion's feel.
+local FOLLOW_STOP_DISTANCE = 3 -- nodes; stop this close to the owner
+local FOLLOW_SPEED = 3.5 -- nodes/sec
+local GRAVITY = -9.81
+
+function hashimon.step_follow_owner(self)
+	if not self.owner then
+		return
+	end
+	local owner_obj = core.get_player_by_name(self.owner)
+	local vel = self.object:get_velocity()
+	if not owner_obj or not owner_obj:is_player() then
+		self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
+		return
+	end
+
+	local mypos = self.object:get_pos()
+	local ownerpos = owner_obj:get_pos()
+	local dx = ownerpos.x - mypos.x
+	local dz = ownerpos.z - mypos.z
+	local dist = math.sqrt(dx * dx + dz * dz)
+
+	if dist > FOLLOW_STOP_DISTANCE then
+		local speed = math.min(FOLLOW_SPEED, dist * 0.6)
+		self.object:set_velocity({
+			x = (dx / dist) * speed,
+			y = vel.y,
+			z = (dz / dist) * speed,
+		})
+	else
+		self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
+	end
+end
+
 function hashimon.type_for_creature(creature)
 	local entry = species_map[creature.speciesKey]
 	if entry and entry.type then
@@ -248,8 +284,10 @@ core.register_entity("hashimon_entities:creature", {
 	initial_properties = {
 		visual = "upright_sprite",
 		textures = { "hashimon_placeholder.png" },
-		physical = false,
+		physical = true,
 		collide_with_objects = false,
+		collisionbox = { -0.4, -0.4, -0.4, 0.4, 0.4, 0.4 },
+		stepheight = 1.1,
 		static_save = false,
 	},
 
@@ -258,6 +296,11 @@ core.register_entity("hashimon_entities:creature", {
 
 	on_activate = function(self, _staticdata, _ds)
 		self.object:set_armor_groups({ immortal = 1 })
+		self.object:set_acceleration({ x = 0, y = GRAVITY, z = 0 })
+	end,
+
+	on_step = function(self, _dtime)
+		hashimon.step_follow_owner(self)
 	end,
 
 	setup = function(self, creature, owner)
