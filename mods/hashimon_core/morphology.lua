@@ -40,47 +40,68 @@ local SIZE_SCALE = {
 	diminutive = 0.75, small = 0.88, medium = 1.0, large = 1.15, huge = 1.3, massive = 1.5,
 }
 
--- G0 genesis pools — only bodies with registered skeletons in hashimon_bodies.
+-- Element pools. The element narrows WHICH bodies are plausible; the DNA picks
+-- one within that pool. That is deliberately NOT "element determines body" —
+-- every pool holds several families, so two Fire Hashimon usually differ in
+-- silhouette (see ADN_PROPIEDAD_TEORIA_DE_JUEGO.md §7: type and body are
+-- independent axes).
+--
+-- Unregistered ids are filtered out at pick time (filter_registered), so listing
+-- an optional body like dragon_wyvern is safe when draconis is absent.
+--
+-- NOTE: the rarity policy (which bodies Genesis may roll vs. which are reserved
+-- for Natural/Bitcoin-seeded births) is still undecided — see §3 of the
+-- morphology discussion. These pools preserve the previous policy (wyvern
+-- already reachable from fuego/astro/magia/vacío) and only fix the diversity
+-- collapse. Revisit here once that decision lands.
 local G0_POOLS = {
-	fuego = { "canine_wolf", "dragon_wyvern" },
-	agua = { "canine_wolf" },
-	aire = { "avian_bat", "canine_wolf" },
-	tierra = { "canine_wolf" },
-	["eléctrico"] = { "canine_wolf", "avian_bat" },
-	electrico = { "canine_wolf", "avian_bat" },
-	pixel = { "canine_wolf" },
-	onda = { "canine_wolf", "avian_bat" },
-	astro = { "dragon_wyvern", "canine_wolf" },
-	["sueño"] = { "canine_wolf" },
-	sueno = { "canine_wolf" },
-	magia = { "dragon_wyvern", "avian_bat" },
-	metal = { "canine_wolf" },
-	hongo = { "canine_wolf" },
-	mental = { "avian_bat", "canine_wolf" },
-	vegetal = { "canine_wolf" },
-	["espíritu"] = { "avian_bat", "canine_wolf" },
-	espiritu = { "avian_bat", "canine_wolf" },
-	["vacío"] = { "dragon_wyvern", "canine_wolf" },
-	vacio = { "dragon_wyvern", "canine_wolf" },
+	fuego = { "canine_wolf", "feline_cat", "canine_fox", "dragon_wyvern" },
+	agua = { "amphibian_frog", "rodent_rat", "feline_cat", "canine_wolf" },
+	aire = { "avian_bat", "avian_owl", "avian_songbird", "feline_cat" },
+	tierra = { "ursine_bear", "equine_horse", "canine_wolf", "rodent_rat" },
+	["eléctrico"] = { "rodent_rat", "feline_cat", "canine_fox", "avian_bat" },
+	electrico = { "rodent_rat", "feline_cat", "canine_fox", "avian_bat" },
+	pixel = { "feline_cat", "rodent_rat", "canine_fox", "avian_songbird" },
+	onda = { "avian_songbird", "amphibian_frog", "canine_fox", "avian_bat" },
+	astro = { "avian_owl", "equine_horse", "dragon_wyvern", "feline_cat" },
+	["sueño"] = { "avian_owl", "feline_cat", "amphibian_frog", "avian_bat" },
+	sueno = { "avian_owl", "feline_cat", "amphibian_frog", "avian_bat" },
+	magia = { "avian_owl", "feline_cat", "dragon_wyvern", "avian_bat" },
+	metal = { "ursine_bear", "equine_horse", "canine_wolf", "rodent_rat" },
+	hongo = { "amphibian_frog", "rodent_rat", "ursine_bear", "canine_fox" },
+	mental = { "avian_owl", "feline_cat", "rodent_rat", "avian_bat" },
+	vegetal = { "amphibian_frog", "ursine_bear", "canine_fox", "avian_songbird" },
+	["espíritu"] = { "avian_bat", "avian_owl", "feline_cat", "canine_fox" },
+	espiritu = { "avian_bat", "avian_owl", "feline_cat", "canine_fox" },
+	["vacío"] = { "avian_bat", "dragon_wyvern", "rodent_rat", "avian_owl" },
+	vacio = { "avian_bat", "dragon_wyvern", "rodent_rat", "avian_owl" },
 }
 
-local ARCHETYPE_DEFAULT_BODY = {
-	canine = "canine_wolf",
-	feline = "canine_wolf",
-	ursine = "canine_wolf",
-	avian = "avian_bat",
-	aquatic = "canine_wolf",
-	reptilian = "dragon_wyvern",
-	arachnid = "canine_wolf",
-	mollusk = "canine_wolf",
-	humanoid = "canine_wolf",
-	construct = "canine_wolf",
-	celestial = "dragon_wyvern",
-	spectral = "avian_bat",
-	fungal = "canine_wolf",
-	crystalline = "dragon_wyvern",
-	amorphous = "avian_bat",
-	hybrid = "canine_wolf",
+-- Archetype -> candidate bodies (DNA picks within). Previously this collapsed
+-- 9 of 16 archetypes onto canine_wolf, which is why every Hashimon rendered as
+-- a wolf regardless of its compiled archetype.
+--
+-- arachnid / mollusk / humanoid / construct have no faithful skeleton in the
+-- MIT stack (Animalia + Draconis). They map to the nearest available silhouette
+-- rather than to wolf; real bodies for them need the dmobs tier (golem, orc,
+-- wasp — CC BY-SA 3.0, licence decision pending) or a Meshy/procedural body.
+local ARCHETYPE_BODY_POOLS = {
+	canine = { "canine_wolf", "canine_fox" },
+	feline = { "feline_cat" },
+	ursine = { "ursine_bear" },
+	avian = { "avian_bat", "avian_owl", "avian_songbird" },
+	aquatic = { "amphibian_frog" }, -- placeholder: no fish body registered yet
+	reptilian = { "dragon_wyvern", "amphibian_frog" },
+	arachnid = { "rodent_rat" }, -- placeholder: needs dmobs wasp / Meshy
+	mollusk = { "amphibian_frog" }, -- placeholder
+	humanoid = { "ursine_bear" }, -- placeholder: needs dmobs orc/skeleton
+	construct = { "ursine_bear", "equine_horse" }, -- placeholder: needs dmobs golem
+	celestial = { "avian_owl", "equine_horse" },
+	spectral = { "avian_bat", "avian_owl" },
+	fungal = { "amphibian_frog", "rodent_rat" },
+	crystalline = { "dragon_wyvern", "feline_cat" },
+	amorphous = { "amphibian_frog", "rodent_rat" },
+	hybrid = { "canine_fox", "feline_cat", "avian_bat" },
 }
 
 local function dna_pick(dna, position, length, list)
@@ -169,24 +190,25 @@ local function pick_body_id(creature, dna, element_type, generation)
 
 	local pool
 	if generation <= 0 then
-		pool = G0_POOLS[element_type] or { "canine_wolf" }
+		pool = G0_POOLS[element_type]
 	else
-		local archetype = pick_archetype(dna)
-		local preferred = ARCHETYPE_DEFAULT_BODY[archetype] or "canine_wolf"
-		pool = { preferred, "canine_wolf", "avian_bat", "dragon_wyvern" }
+		-- Beyond Genesis the compiled archetype leads: it is the trait that says
+		-- what KIND of creature this is, so it selects the candidate bodies.
+		pool = ARCHETYPE_BODY_POOLS[pick_archetype(dna)]
 	end
 
-	pool = filter_registered(pool)
+	pool = filter_registered(pool or {})
+	if #pool == 0 then
+		-- Never fall back to a single hardcoded body — that is what collapsed
+		-- every Hashimon into a wolf. Use whatever is actually registered.
+		pool = hashimon.list_bodies()
+	end
 	if #pool == 0 then
 		return nil
 	end
 
-	-- Reserved nibble [8] picks variant within pool when multiple skeletons allowed.
-	if #pool > 1 then
-		local idx = tonumber(dna:sub(8, 8), 16) or 0
-		return pool[(idx % #pool) + 1]
-	end
-	return pool[1]
+	-- Reserved nibble [8] picks the body within the pool.
+	return dna_pick(dna, 8, 1, pool)
 end
 
 local function resolve_attachments(signature, element_type, look, stage)

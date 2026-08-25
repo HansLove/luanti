@@ -5,6 +5,10 @@ dofile(modpath .. "/mount.lua")
 dofile(modpath .. "/voxel_body.lua")
 dofile(modpath .. "/attack.lua")
 
+-- Dev-only POC for our own animated GLB (/htest). Additive and self-contained —
+-- delete this line and test_bear.lua to remove it entirely.
+dofile(modpath .. "/test_bear.lua")
+
 if core.get_modpath("animalia") and core.get_modpath("creatura") then
 	dofile(modpath .. "/companion.lua")
 end

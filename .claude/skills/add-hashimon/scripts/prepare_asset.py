@@ -110,6 +110,55 @@ def report_material_risks(gltf):
                   f" backface artifacts on thin geometry")
 
 
+def report_animations(gltf):
+    """Animation tracks and their real length.
+
+    The number that matters is seconds, not Blender frames: glTF stores keyframe
+    times in seconds and Luanti uses those seconds directly as frame numbers
+    (doc/lua_api.md: "glTF files should use timestamps in seconds as animation
+    frame numbers"). A Blender range of 1-15 at 24fps is 0.583s here, not 1..15.
+    """
+    animations = gltf.get("animations", [])
+    skins = gltf.get("skins", [])
+
+    if not animations:
+        print("  ! no animation track — renders as a static pose")
+        if skins:
+            print("    it has an armature, so the action was probably not exported;")
+            print("    in Blender check 'Animation' is enabled in the glTF exporter")
+        return
+
+    for i, anim in enumerate(animations):
+        name = anim.get("name") or ""
+        duration = 0.0
+        for sampler in anim.get("samplers", []):
+            accessor = gltf["accessors"][sampler["input"]]
+            # glTF requires min/max on animation input accessors, so the length
+            # is readable without decoding the binary chunk.
+            if accessor.get("max"):
+                duration = max(duration, float(accessor["max"][0]))
+        label = f'"{name}"' if name else "(unnamed)"
+        print(f"  track {i + 1} {label}: {duration:.3f}s")
+
+        unsupported = {
+            s.get("interpolation", "LINEAR") for s in anim.get("samplers", [])
+        } - {"LINEAR", "STEP"}
+        if unsupported:
+            print(f"    ! {', '.join(sorted(unsupported))} interpolation — "
+                  "Luanti loads LINEAR and STEP only")
+
+        if any(c.get("target", {}).get("path") == "weights"
+               for c in anim.get("channels", [])):
+            print("    ! morph-target (shape key) animation — the glTF loader "
+                  "raises on this and the WHOLE MESH fails to load")
+
+    joints = sum(len(s.get("joints", [])) for s in skins)
+    if skins:
+        print(f"  {len(skins)} skin(s), {joints} joint(s) — skeletal deformation")
+    else:
+        print("  ! no skin — rigid node motion only, the mesh will not deform")
+
+
 def next_version(destination, slug):
     """Pick a filename that has not been registered yet.
 
@@ -158,6 +207,7 @@ def main():
         print("  ! large: every client downloads this in full on spawn")
 
     report_material_risks(gltf)
+    report_animations(gltf)
 
     version = next_version(args.media_dir, slug)
     mesh_name = f"{slug}_v{version}.glb"

@@ -81,40 +81,30 @@
     "name": "Ember Genesis",
     "type": "fuego",
     "type2": null,
-    "species": "genesis",
-    "bodyFamily": "canine",
-    "skeleton": "canine_wolf"
+    "species": "genesis"
   },
   "genesis_agua": {
     "name": "Tide Genesis",
     "type": "agua",
     "type2": null,
-    "species": "genesis",
-    "bodyFamily": "canine",
-    "skeleton": "canine_wolf"
+    "species": "genesis"
   },
   "genesis_aire": {
     "name": "Gust Genesis",
     "type": "aire",
     "type2": null,
-    "species": "genesis",
-    "bodyFamily": "avian",
-    "skeleton": "avian_bat"
+    "species": "genesis"
   },
   "genesis_tierra": {
     "name": "Root Genesis",
     "type": "tierra",
     "type2": null,
-    "species": "genesis",
-    "bodyFamily": "canine",
-    "skeleton": "canine_wolf"
+    "species": "genesis"
   },
   "genesis_electrico": {
     "name": "Volt Genesis",
     "type": "eléctrico",
     "type2": null,
-    "species": "genesis",
-    "bodyFamily": "canine",
-    "skeleton": "canine_wolf"
+    "species": "genesis"
   }
 }

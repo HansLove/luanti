@@ -1,0 +1,2 @@
+Drop hashimon_super_bear.glb here. Luanti scans mod model dirs at startup, so a
+file placed here ships to clients automatically — no dynamic_add_media needed.

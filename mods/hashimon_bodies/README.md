@@ -8,13 +8,36 @@ Canonical **Creatura** body registry for Hashimon roster creatures.
 - `hashimon_entities` optional at runtime (roster + blast/stats UI); loads after bodies via its `optional_depends`
 - `draconis` (optional — enables `dragon_wyvern` skeleton)
 
-## Bodies (MVP)
+## Bodies
 
-| ID | Mesh | Family |
-|----|------|--------|
-| `canine_wolf` | `animalia_wolf.b3d` | canine |
-| `avian_bat` | `animalia_bat.b3d` | avian |
-| `dragon_wyvern` | `draconis_jungle_wyvern.b3d` | dragon |
+11 bodies across 8 families. All meshes come from the MIT stack
+(Animalia + Draconis) and ship with real walk/run/fly clips.
+
+| ID | Mesh | Family | Texture variants | Notes |
+|----|------|--------|------------------|-------|
+| `canine_wolf` | `animalia_wolf.b3d` | canine | 4 | |
+| `canine_fox` | `animalia_fox.b3d` | canine | 1 | walk/run share one clip |
+| `feline_cat` | `animalia_cat.b3d` | feline | 9 | widest texture variation |
+| `ursine_bear` | `animalia_bear.b3d` | ursine | 1 | heavy silhouette |
+| `equine_horse` | `animalia_horse.b3d` | equine | 6 | `capabilities.mount = true` |
+| `rodent_rat` | `animalia_rat.b3d` | rodent | 3 | smallest walker |
+| `avian_bat` | `animalia_bat.b3d` | avian | 3 | |
+| `avian_owl` | `animalia_owl.b3d` | avian | 1 | flight-only, no walk clip |
+| `avian_songbird` | `animalia_bird.b3d` | avian | 3 | walk + fly |
+| `amphibian_frog` | `animalia_dart_frog.b3d` | amphibian | 3 | has swim clip |
+| `dragon_wyvern` | `draconis_jungle_wyvern.b3d` | dragon | 4 | needs `draconis` |
+
+`equine_horse` advertises `mount` as **metadata only** — [`mount.lua`](../hashimon_entities/mount.lua)
+currently drives voxel bodies, so wiring it to Creatura bodies is separate work.
+
+### Not yet covered
+
+`arachnid`, `mollusk`, `humanoid` and `construct` archetypes have no faithful
+skeleton in the MIT stack and currently map to the nearest available silhouette
+(see `ARCHETYPE_BODY_POOLS` in [`morphology.lua`](../hashimon_core/morphology.lua)).
+Real bodies for them need either the **dmobs** tier (golem, orc, wasp — models are
+**CC BY-SA 3.0**, a licence decision, unlike the MIT mods above) or new assets.
+No snake/serpent mesh exists in any installed mod.
 
 ## Spawn chain
 
@@ -39,7 +62,13 @@ Then `/hashimon sync` — creatures without premium GLB spawn as animated Creatu
 ## Validation
 
 ```bash
-python3 scripts/validate_morphology.py
+luajit scripts/validate_morphology.lua
 ```
 
-Expect **>= 50** unique morphology fingerprints from random DNAs.
+Loads the real `morphology.lua` + `dna_compiler.lua` and asserts every Genesis
+species resolves to **more than one body**. Current result: 11 distinct bodies
+across 8 families, ~4 bodies per Genesis species at roughly uniform odds.
+
+> The old `validate_morphology.py` was a Python reimplementation that pinned one
+> skeleton per species, so it reported PASS while every creature rendered as the
+> same wolf. It is now a thin runner for the Lua check — don't reintroduce a mirror.
