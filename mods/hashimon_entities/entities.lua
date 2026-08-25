@@ -236,9 +236,10 @@ end
 
 --- Spawn one creature at pos, trying each render tier in order so a Hashimon
 --- never appears as nothing:
----   1. Custom 3D media (Meshy/Blender GLB, via hashimon_core's media registry)
----   2. Procedural voxel body (DNA-correct colour + shape, this mod)
----   3. Sprite + colorize (last-resort safety net)
+---   1. Premium GLB (hashimon_media registry — optional art form)
+---   2. Canonical morphology (Creatura rigged body + DNA phenotype)
+---   3. Procedural voxel body (DNA colour + shape)
+---   4. Sprite + colorize (last-resort safety net)
 local function spawn_creature_entity(pos, creature, owner)
 	local media = hashimon.resolve_creature_media and hashimon.resolve_creature_media(creature)
 	if media then
@@ -248,6 +249,13 @@ local function spawn_creature_entity(pos, creature, owner)
 			if ent then
 				ent:setup(creature, owner)
 			end
+			return obj
+		end
+	end
+
+	if hashimon.spawn_morph_creature then
+		local obj = hashimon.spawn_morph_creature(pos, creature, owner)
+		if obj then
 			return obj
 		end
 	end

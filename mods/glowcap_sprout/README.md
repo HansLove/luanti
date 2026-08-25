@@ -5,7 +5,7 @@
 ## Installation
 
 1. Copy this folder to: `3d-world/mods/glowcap_sprout/`
-2. Enable in Luanti: Content → Mods → Meshy glowcap_sprout
+2. Enable in Luanti: Content → Mods → glowcap_sprout (title: Meshy Glowcap Sprout)
 3. Restart or rejoin world
 4. Spawn with: `/spawn_glowcap_sprout`
 
