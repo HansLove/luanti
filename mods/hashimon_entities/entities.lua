@@ -28,7 +28,7 @@ local TYPE_COLORS = {
 	agua = "3B82F6",
 	onda = "14B8A6",
 	electrico = "EAB308",
-	["eléctrico"] = "EAB308", -- compiler.ts's TYPES/ELEMENT_PALETTES key (with accent); species.json genesis_electrico uses this
+	["eléctrico"] = "EAB308", -- accented spelling, matches compiler.ts TYPES; species.json genesis_electrico uses this
 	tierra = "92400E",
 	aire = "67E8F9",
 	astro = "6366F1",
@@ -98,14 +98,36 @@ function hashimon.texture_color_for_creature(creature)
 	return TYPE_COLORS[elem] or "888888"
 end
 
+--- Recolour a creature's body texture from its DNA.
+---
+--- The element is NOT consulted. This used to return a flat
+--- "[colorize:<element colour>:180", which painted 70% of a solid element hue
+--- over every pixel — every Water Hashimon came out the same blue, and the eyes,
+--- muzzle and fur shading painted into the texture were flattened away.
+--- hashimon.texture_mod_from_ramp uses [colorizehsl, which preserves luminance.
+---
+--- Falls back to the flat element tint only when the DNA compiler is unavailable
+--- or the DNA is unusable, so a creature is never left untinted.
 function hashimon.texture_mod_for_creature(creature)
+	if creature and creature.dna and hashimon.compile_look and hashimon.texture_mod_from_ramp then
+		local look = hashimon.compile_look(creature.dna, hashimon.type_for_creature(creature))
+		if look then
+			return hashimon.texture_mod_from_ramp(hashimon.derive_color_ramp(look))
+		end
+	end
 	return "^[colorize:#" .. hashimon.texture_color_for_creature(creature) .. ":180"
 end
 
+--- Stage-driven size multiplier, where 1.0 means "the size the source mob was
+--- authored at" (Animalia meshes are built for visual_size 10).
+---
+--- The old curve was 0.5 + stage*0.08 floored at 0.6, so a stage-1 creature
+--- rendered at 60% of a real wolf — and once build/size traits multiplied on top
+--- it could reach 38%. Everything looked like a toy. This curve starts a hair
+--- under native size and grows from there.
 function hashimon.visual_size_for_creature(creature)
 	local stage = creature.stage or creature.tier or 1
-	local scale = math.max(0.6, math.min(2.5, 0.5 + stage * 0.08))
-	return scale
+	return math.max(0.95, math.min(2.6, 0.9 + stage * 0.07))
 end
 
 function hashimon.companion_visual_size(creature)

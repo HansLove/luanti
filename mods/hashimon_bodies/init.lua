@@ -24,9 +24,6 @@ hashimon_bodies.register_creatura_body({
 	mesh = "animalia_wolf.b3d",
 	textures = {
 		"animalia_wolf_1.png",
-		"animalia_wolf_2.png",
-		"animalia_wolf_3.png",
-		"animalia_wolf_4.png",
 	},
 	visual_size_base = 10,
 	speed = 4,
@@ -53,6 +50,8 @@ hashimon_bodies.register_creatura_body({
 	id = "avian_bat",
 	family = "avian",
 	mesh = "animalia_bat.b3d",
+	-- All three bat skins are dark and near-flat (sd<0.07, max lum<0.4).
+	contrast = { 90, 40 },
 	textures = {
 		"animalia_bat_1.png",
 		"animalia_bat_2.png",
@@ -99,16 +98,15 @@ hashimon_bodies.register_creatura_body({
 })
 
 -- ---------------------------------------------------------------------------
--- FELINE — Animalia cat (9 texture variants: widest DNA variation available)
+-- FELINE — Animalia cat (4 high-contrast variants kept of the 9 shipped)
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "feline_cat",
 	family = "feline",
 	mesh = "animalia_cat.b3d",
 	textures = {
-		"animalia_cat_1.png", "animalia_cat_2.png", "animalia_cat_3.png",
-		"animalia_cat_4.png", "animalia_cat_5.png", "animalia_cat_6.png",
-		"animalia_cat_7.png", "animalia_cat_8.png", "animalia_cat_9.png",
+		"animalia_cat_2.png", "animalia_cat_5.png",
+		"animalia_cat_6.png", "animalia_cat_9.png",
 	},
 	visual_size_base = 9,
 	speed = 4,
@@ -136,6 +134,8 @@ hashimon_bodies.register_creatura_body({
 	id = "ursine_bear",
 	family = "ursine",
 	mesh = "animalia_bear.b3d",
+	-- Only skin shipped, dark and near-flat (sd 0.038).
+	contrast = { 90, 40 },
 	textures = { "animalia_bear_grizzly.png" },
 	visual_size_base = 10,
 	speed = 4,
@@ -166,8 +166,7 @@ hashimon_bodies.register_creatura_body({
 	family = "equine",
 	mesh = "animalia_horse.b3d",
 	textures = {
-		"animalia_horse_1.png", "animalia_horse_2.png", "animalia_horse_3.png",
-		"animalia_horse_4.png", "animalia_horse_5.png", "animalia_horse_6.png",
+		"animalia_horse_1.png",
 	},
 	visual_size_base = 10,
 	speed = 5,
@@ -197,7 +196,7 @@ hashimon_bodies.register_creatura_body({
 	id = "rodent_rat",
 	family = "rodent",
 	mesh = "animalia_rat.b3d",
-	textures = { "animalia_rat_1.png", "animalia_rat_2.png", "animalia_rat_3.png" },
+	textures = { "animalia_rat_1.png", "animalia_rat_2.png" },
 	visual_size_base = 7,
 	speed = 4,
 	makes_footstep_sound = false,
@@ -217,6 +216,8 @@ hashimon_bodies.register_creatura_body({
 	id = "avian_owl",
 	family = "avian",
 	mesh = "animalia_owl.b3d",
+	-- Only skin shipped, low contrast (sd 0.069) though not dark.
+	contrast = { 80, 10 },
 	textures = { "animalia_owl.png" },
 	visual_size_base = 8,
 	speed = 4,
@@ -238,7 +239,7 @@ hashimon_bodies.register_creatura_body({
 	family = "avian",
 	mesh = "animalia_bird.b3d",
 	textures = {
-		"animalia_bluebird.png", "animalia_cardinal.png", "animalia_goldfinch.png",
+		"animalia_bluebird.png", "animalia_goldfinch.png",
 	},
 	visual_size_base = 7,
 	speed = 4,
@@ -262,7 +263,7 @@ hashimon_bodies.register_creatura_body({
 	family = "amphibian",
 	mesh = "animalia_dart_frog.b3d",
 	textures = {
-		"animalia_dart_frog_1.png", "animalia_dart_frog_2.png", "animalia_dart_frog_3.png",
+		"animalia_dart_frog_2.png", "animalia_dart_frog_3.png",
 	},
 	visual_size_base = 7,
 	speed = 4,
