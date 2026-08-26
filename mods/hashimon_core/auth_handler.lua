@@ -8,6 +8,9 @@ hashimon = hashimon or {}
 
 local POLL_INTERVAL = 2
 local account_cache = {} -- lower(name) -> { name = originalCase, password = "#1#...", can_own = bool }
+-- Signups written by create_auth whose POST the poll may not reflect yet: a poll
+-- response fetched before the POST landed would otherwise wipe them from the cache.
+local pending_signups = {} -- lower(name) -> entry
 local poll_busy = false
 
 local function default_privs()
@@ -54,6 +57,13 @@ local function apply_auth_list(accounts)
 					can_own = row.can_own == true,
 				}
 			end
+		end
+	end
+	for key, entry in pairs(pending_signups) do
+		if next_cache[key] then
+			pending_signups[key] = nil -- the API now serves it
+		else
+			next_cache[key] = entry
 		end
 	end
 	account_cache = next_cache
@@ -138,6 +148,7 @@ end
 
 local function reject_signup(name, err)
 	account_cache[name:lower()] = nil
+	pending_signups[name:lower()] = nil
 	core.log("warning", "[hashimon_core] luanti-register '" .. name .. "' failed: " .. tostring(err))
 	-- The callback may land mid-handshake; defer the kick to the next step.
 	core.after(0, function()
@@ -168,7 +179,9 @@ core.register_authentication_handler({
 		core.log("action", "[hashimon_core] create_auth '" .. name .. "'")
 		-- The engine reads back right after this call and the next join cannot
 		-- wait for the poll: mirror first, then push to the API.
-		account_cache[name:lower()] = { name = name, password = password, can_own = false }
+		local entry = { name = name, password = password, can_own = false }
+		account_cache[name:lower()] = entry
+		pending_signups[name:lower()] = entry
 		if not builtin.get_auth(name) then
 			builtin.create_auth(name, password) -- local row for privileges/last_login only
 		end
