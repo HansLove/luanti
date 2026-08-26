@@ -36,10 +36,6 @@ local function cached(name)
 	return account_cache[name:lower()]
 end
 
-function hashimon.is_api_account(name)
-	return cached(name) ~= nil
-end
-
 function hashimon.is_api_owner(name)
 	local entry = cached(name)
 	return entry ~= nil and entry.can_own == true
@@ -146,9 +142,15 @@ local function merge_privs(name, local_auth)
 	return privs
 end
 
-local function reject_signup(name, err)
+local function reject_signup(name, err, created_local)
 	account_cache[name:lower()] = nil
 	pending_signups[name:lower()] = nil
+	if created_local then
+		-- Undo the local auth.sqlite row create_auth wrote for this attempt, so a
+		-- retry (or the prejoinplayer guard below) doesn't treat the name as a
+		-- stale local-only account and lock it out.
+		builtin.delete_auth(name)
+	end
 	core.log("warning", "[hashimon_core] luanti-register '" .. name .. "' failed: " .. tostring(err))
 	-- The callback may land mid-handshake; defer the kick to the next step.
 	core.after(0, function()
@@ -182,12 +184,14 @@ core.register_authentication_handler({
 		local entry = { name = name, password = password, can_own = false }
 		account_cache[name:lower()] = entry
 		pending_signups[name:lower()] = entry
+		local created_local = false
 		if not builtin.get_auth(name) then
 			builtin.create_auth(name, password) -- local row for privileges/last_login only
+			created_local = true
 		end
 		hashimon.luanti_register(hashimon.get_server_secret(), name, password, function(ok, err)
 			if not ok then
-				reject_signup(name, err)
+				reject_signup(name, err, created_local)
 			end
 		end)
 		return true
@@ -233,6 +237,15 @@ core.register_on_prejoinplayer(function(name)
 		return "\nCannot create new player called '" .. name .. "'. "
 			.. "Another account called '" .. entry.name .. "' is already registered. "
 			.. "Please check the spelling if it's your account or use a different name."
+	end
+	if not entry and builtin.get_auth(name) then
+		-- A local auth.sqlite row exists (pre-migration guest, or a signup whose
+		-- API push never landed) but the API mirror does not know this name.
+		-- get_auth would otherwise report it as unregistered, letting FIRST_SRP
+		-- silently overwrite it with an arbitrary new password.
+		return "\nThis name has a local account not linked to the Hashimon API. "
+			.. "Register at " .. hashimon.get_register_url() .. " with the same name, "
+			.. "or ask an admin to clear the stale local record."
 	end
 end)
 
