@@ -2,6 +2,21 @@
 
 hashimon_bodies = hashimon_bodies or {}
 
+-- Cube props are OFF by default: they were never calibrated and shipped a giant
+-- coloured box hanging in the sky above every creature.
+--
+-- The offsets below were written as node-space values (horns at y = 2.2) and
+-- then multiplied by 10 on the way into set_attach, giving 22. For comparison,
+-- Animalia seats a rider on a ~2-node-tall horse with an offset of **0.75**
+-- (animalia/mobs/horse.lua:392). Ours were roughly thirty times larger than
+-- anything in working reference code, which is exactly the block in the sky.
+--
+-- The maths below is fixed (fractions of the body's real height, no blind ×10),
+-- but "fixed" here means "the right shape"; the exact numbers still need one
+-- pass of in-game eyeballing before this is worth showing anyone. Flip this to
+-- true, adjust SLOT_FRACTIONS, restart, repeat. /hashclean sweeps up strays.
+hashimon_bodies.enable_prop_attachments = false
+
 hashimon_bodies._attach_refs = hashimon_bodies._attach_refs or {}
 
 local BASE_TEX = "hashimon_placeholder.png"
@@ -20,25 +35,17 @@ core.register_entity("hashimon_bodies:attach_part", {
 	},
 })
 
-local SLOT_OFFSETS = {
-	canine_wolf = {
-		horns = { x = 0, y = 2.2, z = 1.2 },
-		wings = { x = 0, y = 1.8, z = 0 },
-		tail_glow = { x = -1.8, y = 1.0, z = 0 },
-		markings = { x = 0, y = 1.5, z = 0 },
-	},
-	avian_bat = {
-		horns = { x = 0, y = 1.2, z = 0.4 },
-		wings = { x = 0, y = 0.8, z = 0 },
-		tail_glow = { x = 0, y = 0.5, z = -0.5 },
-		markings = { x = 0, y = 0.9, z = 0 },
-	},
-	dragon_wyvern = {
-		horns = { x = 0, y = 3.5, z = 2.0 },
-		wings = { x = 0, y = 2.5, z = 0.5 },
-		tail_glow = { x = -2.5, y = 2.0, z = 0 },
-		markings = { x = 0, y = 2.8, z = 0 },
-	},
+-- Slot positions as a FRACTION OF THE BODY'S OWN HEIGHT, not absolute nodes.
+-- 1.0 means "at the top of the hitbox". Anything much above 1.2 is floating.
+--
+-- Expressing them this way is what makes one table correct for a 0.3-node rat
+-- and a 1.95-node horse at the same time; the previous absolute values only
+-- ever suited the wolf, and every other body inherited them verbatim.
+local SLOT_FRACTIONS = {
+	horns = { x = 0, y = 1.00, z = 0.35 },
+	wings = { x = 0, y = 0.70, z = -0.10 },
+	tail_glow = { x = -0.55, y = 0.45, z = 0 },
+	markings = { x = 0, y = 0.75, z = 0 },
 }
 
 local ATTACH_VISUAL = {
@@ -48,9 +55,32 @@ local ATTACH_VISUAL = {
 	markings = { size = { x = 0.5, y = 0.06, z = 0.35 }, hex_key = "marking" },
 }
 
+--- Attachment offset for one slot on one body, in set_attach units.
+---
+--- Two conversions live here and both were wrong before:
+---   * the offset is a fraction of the body's real hitbox height, so the same
+---     table suits a rat and a horse;
+---   * it is NOT blindly multiplied by 10. The doc's "multiply by 10" note is
+---     about converting world positions, but the parent here is a mesh scaled
+---     by visual_size, and the offset rides that scale. Animalia's own reference
+---     (a rider on a ~2-node horse) uses 0.75 — see the note at the top of this
+---     file for how far off the old numbers were.
+local function slot_offset(body_id, kind)
+	local frac = SLOT_FRACTIONS[kind]
+	if not frac then
+		return nil, 1
+	end
+	local body = hashimon.get_body and hashimon.get_body(body_id)
+	local height = (body and body.hitbox and body.hitbox.height) or 0.7
+	return {
+		x = frac.x * height,
+		y = frac.y * height,
+		z = frac.z * height,
+	}, height / 0.7
+end
+
 local function spawn_attach(parent, body_id, kind, ramp)
-	local slots = SLOT_OFFSETS[body_id] or SLOT_OFFSETS.canine_wolf
-	local off = slots[kind]
+	local off, scale = slot_offset(body_id, kind)
 	local vis = ATTACH_VISUAL[kind]
 	if not off or not vis then
 		return
@@ -61,15 +91,18 @@ local function spawn_attach(parent, body_id, kind, ramp)
 		return
 	end
 	local tex = colorize(hex)
+	-- The prop scales with the body too: a wolf-sized horn on a rat reads as a
+	-- crate balanced on its head.
 	obj:set_properties({
 		textures = { tex, tex, tex, tex, tex, tex },
-		visual_size = vis.size,
+		visual_size = {
+			x = vis.size.x * scale,
+			y = vis.size.y * scale,
+			z = vis.size.z * scale,
+		},
 	})
-	obj:set_attach(parent, "", {
-		x = off.x * 10,
-		y = off.y * 10,
-		z = off.z * 10,
-	}, { x = 0, y = 0, z = 0 })
+	-- No ×10 here on purpose; see slot_offset's note.
+	obj:set_attach(parent, "", off, { x = 0, y = 0, z = 0 })
 	return obj
 end
 
@@ -91,6 +124,9 @@ function hashimon_bodies.apply_attachments(self, morph)
 		return
 	end
 	hashimon_bodies.clear_attachments(self.object)
+	if not hashimon_bodies.enable_prop_attachments then
+		return -- aura still runs; it is a world-space particle, not an attachment
+	end
 	local refs = {}
 	for _, kind in ipairs(morph.attachments) do
 		if kind ~= "aura" then
@@ -129,3 +165,27 @@ function hashimon_bodies.update_aura(self, morph, dtime)
 		texture = "hashimon_placeholder.png^[colorize:" .. hex .. ":200",
 	})
 end
+
+-- Sweep up prop cubes left floating by the miscalibrated offsets. They are
+-- static_save = false so they die with the block they are in, but a player who
+-- already has one parked in the sky needs it gone now, and detached orphans
+-- never get cleared by clear_attachments (that is keyed on a live parent).
+core.register_chatcommand("hashclean", {
+	description = "Remove stray Hashimon prop cubes near you (dev)",
+	privs = { server = true },
+	func = function(name)
+		local player = core.get_player_by_name(name)
+		if not player then
+			return false, "player not found"
+		end
+		local removed = 0
+		for _, obj in ipairs(core.get_objects_inside_radius(player:get_pos(), 120)) do
+			local ent = obj:get_luaentity()
+			if ent and ent.name == "hashimon_bodies:attach_part" then
+				obj:remove()
+				removed = removed + 1
+			end
+		end
+		return true, removed .. " prop cube(s) removed"
+	end,
+})

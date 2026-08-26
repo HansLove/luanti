@@ -22,28 +22,28 @@ local SIZES = { "diminutive", "small", "medium", "large", "huge", "massive" }
 local MARKINGS = { "none", "stripes", "spots", "patches", "bands", "rings", "swirls", "gradients" }
 local MATERIALS = { "flesh", "fur", "scale", "feather", "chitin", "stone", "metal", "crystal" }
 
--- Same bands as compiler.ts's ELEMENT_PALETTES. Keys use the accented Spanish
--- spelling ("eléctrico", "sueño", "espíritu", "vacío") to match compiler.ts's
--- TYPES array exactly — species.json's `type` field must use these same
--- spellings. This is a lookup table (not an ordered list), so order here
--- doesn't matter for parity — only the key spellings do.
-local ELEMENT_PALETTES = {
-	fuego = { 0, 30 },
-	agua = { 180, 240 },
-	["eléctrico"] = { 45, 65 },
-	tierra = { 30, 60 },
-	aire = { 180, 210 },
-	astro = { 240, 300 },
-	pixel = { 0, 360 },
-	["sueño"] = { 240, 300 },
-	magia = { 270, 330 },
-	metal = { 0, 20 },
-	vegetal = { 100, 150 },
-	hongo = { 280, 340 },
-	mental = { 200, 260 },
-	["espíritu"] = { 160, 190 },
-	["vacío"] = { 260, 285 },
+-- Colour harmony rules. The DNA picks one, and it decides where the secondary
+-- and accent hues sit relative to the base hue. This is what makes a palette
+-- read as *designed* rather than as a random triple of colours.
+--
+-- Order matters for TS<->Lua parity: same list, same order, in compiler.ts.
+local HARMONIES = {
+	{ name = "analogous", secondary = 30, accent = -30 },
+	{ name = "complementary", secondary = 180, accent = 180 },
+	{ name = "split", secondary = 150, accent = 210 },
+	{ name = "triadic", secondary = 120, accent = 240 },
+	{ name = "tetradic", secondary = 90, accent = 180 },
+	{ name = "monochrome", secondary = 0, accent = 0 },
 }
+
+-- Saturation/lightness live in deliberately narrow, flattering bands.
+-- The previous code mapped both to the full 0..100, which meant a sine landing
+-- near an extreme produced a black, white or washed-out creature. These ranges
+-- keep every roll readable and vivid.
+local SAT_MIN, SAT_SPAN = 55, 40 -- 55..95
+local LIGHT_MIN, LIGHT_SPAN = 42, 22 -- 42..64
+local ACCENT_SAT_MIN, ACCENT_SAT_SPAN = 60, 35 -- 60..95
+local ACCENT_LIGHT_MIN, ACCENT_LIGHT_SPAN = 45, 18 -- 45..63
 
 -- ---------------------------------------------------------------------------
 -- DNA nibble helpers — mirrors compiler.ts's `DNA` object.
@@ -117,31 +117,41 @@ end
 -- genesis creatures where the type is always fixed by species.
 -- ---------------------------------------------------------------------------
 
+--- Compile the visual look from DNA alone.
+---
+--- The elemental type does NOT influence colour. It used to: each element owned
+--- a hue band, so every Water Hashimon came out blue and the type, not the
+--- individual, decided what you saw. Colour is the *identity* axis and belongs
+--- to the creature; the element is a separate axis entirely (see
+--- api/docs/ADN_PROPIEDAD_TEORIA_DE_JUEGO.md §8).
+---
 --- @param dna string 64-hex creature DNA
---- @param element_type string e.g. "fuego", "eléctrico" — must match ELEMENT_PALETTES keys
-function hashimon.compile_look(dna, element_type)
+--- @param element_type string kept for signature compatibility; unused for colour
+function hashimon.compile_look(dna, element_type) -- luacheck: ignore element_type
 	if not dna or #dna < 52 then
 		return nil
 	end
 
-	-- [14]-[16]: Saturation (sine)
-	local saturation = math.floor(dna_sine(dna, 14, 3) * 100 + 0.5)
-	-- [17]-[19]: Lightness (sine)
-	local lightness = math.floor(dna_sine(dna, 17, 3) * 100 + 0.5)
+	-- [10]-[13]: base hue over the FULL wheel (65,536 values). /65536 rather
+	-- than /65535 so the distribution is uniform and 0xFFFF cannot alias to 0.
+	local hue = (dna_window(dna, 10, 4) / 65536) * 360
 
-	-- [10]-[13]: Exact hue window, mapped into the element's palette band
-	local palette = ELEMENT_PALETTES[element_type] or { 0, 360 }
-	local hue_normalized = dna_window(dna, 10, 4) / 65535
-	local base_hue = palette[1] + hue_normalized * (palette[2] - palette[1])
-	local final_hue = (base_hue % 360 + 360) % 360
+	-- [14]-[16] saturation, [17]-[19] lightness — banded, see constants above.
+	local saturation = math.floor(SAT_MIN + dna_sine(dna, 14, 3) * SAT_SPAN + 0.5)
+	local lightness = math.floor(LIGHT_MIN + dna_sine(dna, 17, 3) * LIGHT_SPAN + 0.5)
 
-	-- [20]-[22]: Accent offset (cosine), ±60° from final_hue
-	local accent_offset = dna_cosine(dna, 20, 3) * 120 - 60
-	local accent_hue = (final_hue + accent_offset) % 360
+	-- [32]: harmony rule. Nibble [32] was reserved; this is its first use.
+	local harmony = dna_pick(dna, 32, 1, HARMONIES)
+
+	local secondary_hue = (hue + harmony.secondary) % 360
+	local accent_hue = (hue + harmony.accent) % 360
 	if accent_hue < 0 then accent_hue = accent_hue + 360 end
 
-	-- [23]-[24]: Accent saturation (sine)
-	local accent_saturation = math.floor(dna_sine(dna, 23, 2) * 100 + 0.5)
+	-- [20]-[22] accent lightness, [23]-[24] accent saturation.
+	local accent_lightness =
+		math.floor(ACCENT_LIGHT_MIN + dna_cosine(dna, 20, 3) * ACCENT_LIGHT_SPAN + 0.5)
+	local accent_saturation =
+		math.floor(ACCENT_SAT_MIN + dna_sine(dna, 23, 2) * ACCENT_SAT_SPAN + 0.5)
 
 	-- [37],[41],[45],[49]: build, size, markings, material
 	local build = dna_pick(dna, 37, 1, BUILDS)
@@ -150,11 +160,14 @@ function hashimon.compile_look(dna, element_type)
 	local material = dna_pick(dna, 49, 1, MATERIALS)
 
 	return {
-		hue = final_hue,
+		hue = hue,
+		secondaryHue = secondary_hue,
+		harmony = harmony.name,
 		saturation = saturation,
 		lightness = lightness,
 		accentHue = accent_hue,
 		accentSaturation = accent_saturation,
+		accentLightness = accent_lightness,
 		build = build,
 		size = size,
 		markings = markings,
@@ -174,15 +187,42 @@ end
 --- @param look table as returned by hashimon.compile_look
 function hashimon.derive_color_ramp(look)
 	local H, S, L = look.hue, look.saturation, look.lightness
+	local SH = look.secondaryHue or H
 	local AH, AS = look.accentHue, look.accentSaturation
+	local AL = look.accentLightness or 50
 
 	return {
 		shadow = tone(H, S, clamp(L - 25, 12, 100)),
 		base = tone(H, S, L),
 		highlight = tone(H, clamp(S - 10, 0, 100), clamp(L + 18, 0, 92)),
-		marking = tone(H, clamp(S + 15, 0, 100), clamp(L - 22, 10, 100)),
-		accent = tone(AH, AS, 50),
+		-- Markings use the SECONDARY hue, not a darker shade of the base. That
+		-- one change is most of what separates "a creature with a palette" from
+		-- "a model dipped in one colour".
+		marking = tone(SH, clamp(S + 10, 0, 100), clamp(L - 18, 10, 100)),
+		accent = tone(AH, AS, AL),
 	}
+end
+
+--- Luanti texture modifier that recolours a body texture from the ramp.
+---
+--- Uses [colorizehsl, NOT [colorize. [colorize blends a flat colour over every
+--- pixel, which at the ratio this project used (180/255) flattened the eyes,
+--- muzzle and fur shading painted into the Animalia textures into one solid
+--- slab of colour — the "all-blue dog with no face" problem. [colorizehsl
+--- converts to greyscale and tints, so the luminance structure survives and the
+--- painted face comes back for free.
+--- @param ramp table as returned by hashimon.derive_color_ramp
+function hashimon.texture_mod_from_ramp(ramp)
+	local base = ramp.base
+	-- Luanti wants hue in [-180,180]; standard HSL is [0,360).
+	local hue = base.h
+	if hue > 180 then hue = hue - 360 end
+	-- [colorizehsl lightness is a delta around the greyscale result, where 0 is
+	-- no change; our L is absolute HSL lightness centred on 50.
+	local light = (base.l - 50) * 2
+	if light < -100 then light = -100 elseif light > 100 then light = 100 end
+	return string.format("^[colorizehsl:%d:%d:%d",
+		math.floor(hue + 0.5), math.floor(base.s + 0.5), math.floor(light + 0.5))
 end
 
 -- ---------------------------------------------------------------------------
