@@ -31,13 +31,18 @@ local SIGNATURE_FEATURES = {
 	"none", "crown", "wings", "horns", "tail", "aura", "gemstone", "appendages",
 }
 
+-- Build and size MODULATE the stage scale; they must not dominate it. The
+-- previous ranges (0.85..1.18 and 0.75..1.50) multiplied out to 0.64x at the
+-- low end, so a delicate+diminutive stage-1 creature ended up roughly a third
+-- of its mesh's authored size. These bands keep the trait readable while
+-- leaving stage in charge of how big a Hashimon actually is.
 local BUILD_SCALE = {
-	delicate = 0.85, lean = 0.92, balanced = 1.0, stocky = 1.08,
-	muscular = 1.12, bulbous = 1.18, angular = 0.95, round = 1.05,
+	delicate = 0.92, lean = 0.96, balanced = 1.0, stocky = 1.05,
+	muscular = 1.08, bulbous = 1.10, angular = 0.98, round = 1.03,
 }
 
 local SIZE_SCALE = {
-	diminutive = 0.75, small = 0.88, medium = 1.0, large = 1.15, huge = 1.3, massive = 1.5,
+	diminutive = 0.85, small = 0.93, medium = 1.0, large = 1.10, huge = 1.20, massive = 1.30,
 }
 
 -- Element pools. The element narrows WHICH bodies are plausible; the DNA picks
@@ -211,6 +216,15 @@ local function pick_body_id(creature, dna, element_type, generation)
 	return dna_pick(dna, 8, 1, pool)
 end
 
+--- "^[contrast:<c>:<b>" for bodies that declare a lift, "" otherwise.
+local function contrast_mod(body_def)
+	local c = body_def and body_def.contrast
+	if not c then
+		return ""
+	end
+	return string.format("^[contrast:%d:%d", c[1] or 0, c[2] or 0)
+end
+
 local function resolve_attachments(signature, element_type, look, stage)
 	local attachments = {}
 	if signature == "horns" or signature == "crown" then
@@ -240,8 +254,22 @@ function hashimon.morph_visual_size(creature, look, body_def)
 	return { x = s, y = s }
 end
 
-function hashimon.morph_texture_index(creature)
-	return hashimon.wolf_texture_index(creature)
+--- Pick a texture variant across the body's ACTUAL variant count.
+---
+--- This used to call wolf_texture_index(), which is hardcoded to `(n % 4) + 1`
+--- because the wolf ships four skins. Every body inherited that 4, so the cat's
+--- 9 variants and the horse's 6 had their tails silently unreachable. It also
+--- summed raw DNA bytes instead of reading nibbles like the rest of the
+--- compiler. Nibbles [33]-[34] are reserved space and give 256 values to spread.
+function hashimon.morph_texture_index(creature, body_def)
+	local count = (body_def and body_def.textures and #body_def.textures) or 1
+	if count <= 1 then
+		return 1
+	end
+	local w = tonumber((creature.dna or "0"):sub(33, 34), 16) or 0
+	local i = math.floor((w / 256) * count) + 1
+	if i > count then i = count end
+	return i
 end
 
 --- Compile full morphology descriptor for a roster creature.
@@ -275,9 +303,16 @@ function hashimon.compile_morphology(creature)
 		generation = generation,
 		look = look,
 		ramp = ramp,
-		texture_index = hashimon.morph_texture_index(creature),
-		texture_mod = "^[colorize:" .. ramp.base.hex .. ":120",
-		element_mod = hashimon.texture_mod_for_creature(creature),
+		texture_index = hashimon.morph_texture_index(creature, body_def),
+		-- Single luminance-preserving recolour. There used to be a second,
+		-- element-derived flat colorize applied on top of this one (element_mod),
+		-- which is what made every Water Hashimon the same blue regardless of its
+		-- DNA. Colour is the individual's axis; the element does not touch it.
+		--
+		-- The optional contrast lift runs FIRST: [colorizehsl tints the luminance
+		-- structure, so a body whose only skins are near-flat needs that structure
+		-- pulled apart before tinting or it renders as one solid blob.
+		texture_mod = contrast_mod(body_def) .. hashimon.texture_mod_from_ramp(ramp),
 		visual_size = hashimon.morph_visual_size(creature, look, body_def),
 		attachments = resolve_attachments(signature, element_type, look, stage),
 		aura = stage >= 5 or signature == "aura" or look.material == "crystal",

@@ -16,10 +16,10 @@ local modpath = core.get_modpath("hashimon_entities")
 
 local MESH = "hashimon_super_bear.glb"
 
--- glTF is fixed at 10 mesh units per node, so this is the number to tune if the
--- bear turns up microscopic or enormous. Adjust live with /htestsize, then write
--- the value that looked right back here.
-local VISUAL_SIZE = 10
+-- glTF is fixed at 10 mesh units per node. 11.8 comes from the model's measured
+-- bounding box (1.14 x 1.02 x 1.47 mesh units) and puts the bear at ~1.2 nodes
+-- tall, roughly player height. Tune live with /htestsize if it still looks off.
+local VISUAL_SIZE = 11.8
 
 -- Track 1 = the first animation track, addressed by INDEX, not by name.
 -- read_track_id (src/script/lua_api/l_object.cpp) takes a number as an index and
@@ -39,12 +39,11 @@ core.register_entity("hashimon_entities:test_bear", {
 	initial_properties = {
 		visual = "mesh",
 		mesh = MESH,
-		-- Left empty on purpose: with no texture the model still renders (white/
-		-- default), which keeps a *texture* problem from being mistaken for an
-		-- *animation* problem. Luanti never reads glTF-embedded images, so once
-		-- the shape and motion are confirmed, extract the texture with
-		-- prepare_asset.py and list the .png/.jpg here.
-		textures = {},
+		-- Extracted from the GLB, because Luanti never reads glTF-embedded images.
+		-- 2048x2048 JPEG, ~3.8MB — that is nearly the whole asset, and every
+		-- client downloads it on first spawn. Worth halving to 1024 before this
+		-- pattern is used for more than one test creature.
+		textures = { "hashimon_super_bear.jpg" },
 		visual_size = { x = VISUAL_SIZE, y = VISUAL_SIZE, z = VISUAL_SIZE },
 		collisionbox = { -0.5, 0.0, -0.5, 0.5, 1.2, 0.5 },
 		selectionbox = { -0.5, 0.0, -0.5, 0.5, 1.2, 0.5 },

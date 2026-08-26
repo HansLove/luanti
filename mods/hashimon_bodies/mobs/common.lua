@@ -41,8 +41,9 @@ function hashimon_bodies.apply_morphology(self, creature, morph)
 		self:set_texture(idx, textures)
 	end
 
-	local mod = (morph.texture_mod or "") .. (morph.element_mod or "")
-	self.object:set_texture_mod(mod)
+	-- One modifier only. Concatenating a second, element-coloured colorize here
+	-- is what flattened every creature into its element's colour.
+	self.object:set_texture_mod(morph.texture_mod or "")
 	self.object:set_properties({
 		visual_size = morph.visual_size,
 	})

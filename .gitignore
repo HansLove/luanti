@@ -30,7 +30,6 @@ gtags.files
 # Codelite
 *.project
 # Visual Studio Code & plugins
-.vscode/*
 !.vscode/extensions.json
 build/.cmake/
 # Zed
@@ -153,3 +152,5 @@ lib/irrlichtmt
 
 # Generated mod storage database
 client/mod_storage.sqlite
+config.bat
+node_modules
