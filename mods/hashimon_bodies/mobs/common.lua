@@ -137,7 +137,10 @@ end
 function hashimon_bodies.register_creatura_body(body_def)
 	hashimon.register_body(body_def)
 
-	creatura.register_mob("hashimon_bodies:" .. body_def.id, {
+	-- Leading ":" skips Luanti's current-mod prefix check so body packs
+	-- (hashimon_bodies_dmobs, hashimon_bodies_paleo) can register under the
+	-- shared hashimon_bodies: namespace that spawn.lua expects.
+	creatura.register_mob(":hashimon_bodies:" .. body_def.id, {
 		visual_size = { x = body_def.visual_size_base or 10, y = body_def.visual_size_base or 10 },
 		mesh = body_def.mesh,
 		textures = body_def.textures,
