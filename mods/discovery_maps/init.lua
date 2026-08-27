@@ -1667,32 +1667,28 @@ minetest.register_globalstep(function(dtime)
 		-- Ensure player data exists
 		if not player_data[name] then
 			minetest.log("warning", "[persistent_map] Player data missing for " .. name .. " in globalstep")
-			goto continue
-		end
-		
-		local pos = player:get_pos()
-		if not pos then
-			goto continue
-		end
-		local tile_x, tile_z = pos_to_tile_coords(pos)
+		else
+			local pos = player:get_pos()
+			if pos then
+				local tile_x, tile_z = pos_to_tile_coords(pos)
 
-		check_frontier_notice(name, pos)
-		
-		local data = player_data[name]
-		
-		-- Check if player moved to new tile
-		if data.last_tile_x ~= tile_x or data.last_tile_z ~= tile_z then
-			local discovered = add_discovered_tile(name, tile_x, tile_z, function()
-				-- Send discovery message only after tile generation is complete
-				minetest.chat_send_player(name, S("New area discovered!"))
-			end)
-			if discovered then
-				data.last_tile_x = tile_x
-				data.last_tile_z = tile_z
+				check_frontier_notice(name, pos)
+
+				local data = player_data[name]
+
+				-- Check if player moved to new tile
+				if data.last_tile_x ~= tile_x or data.last_tile_z ~= tile_z then
+					local discovered = add_discovered_tile(name, tile_x, tile_z, function()
+						-- Send discovery message only after tile generation is complete
+						minetest.chat_send_player(name, S("New area discovered!"))
+					end)
+					if discovered then
+						data.last_tile_x = tile_x
+						data.last_tile_z = tile_z
+					end
+				end
 			end
 		end
-		
-		::continue::
 	end
 end)
 
