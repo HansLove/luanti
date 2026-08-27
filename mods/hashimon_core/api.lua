@@ -4,6 +4,11 @@
 hashimon = hashimon or {}
 
 local DEFAULT_API_URL = "http://127.0.0.1:4000"
+local http -- set once by init.lua; never exposed as a global (lua_api.md)
+
+function hashimon.set_http(api)
+	http = api
+end
 
 function hashimon.get_api_url()
 	local url = core.settings:get("hashimon_api_url")
@@ -41,11 +46,11 @@ local function http_failure_code(res)
 end
 
 function hashimon.http_request(req, callback)
-	if not hashimon.http then
+	if not http then
 		callback({ completed = true, code = 0, data = "", error = "http_unavailable" })
 		return
 	end
-	hashimon.http.fetch(req, callback)
+	http.fetch(req, callback)
 end
 
 function hashimon.http_error_message(err)
@@ -167,10 +172,10 @@ end
 -- io.popen is nil in the Lua sandbox; poll fetch_async_get instead (HTTP thread
 -- can finish while we wait).
 function hashimon.fetch_luanti_auth_sync(secret)
-	if not hashimon.http or not hashimon.http.fetch_async or not hashimon.http.fetch_async_get then
+	if not http or not http.fetch_async or not http.fetch_async_get then
 		return false, "http_unavailable", nil
 	end
-	local handle = hashimon.http.fetch_async({
+	local handle = http.fetch_async({
 		url = hashimon.get_api_url() .. "/internal/luanti-auth",
 		method = "GET",
 		timeout = 5,
@@ -182,7 +187,7 @@ function hashimon.fetch_luanti_auth_sync(secret)
 	local deadline = os.clock() + 5
 	local res
 	repeat
-		res = hashimon.http.fetch_async_get(handle)
+		res = http.fetch_async_get(handle)
 	until (res and res.completed) or os.clock() >= deadline
 	if not res or not res.completed then
 		return false, "timeout", nil
@@ -256,5 +261,34 @@ function hashimon.luanti_bind(secret, name, callback)
 			return
 		end
 		callback(true, nil, body)
+	end)
+end
+
+-- Push an in-game signup to the API. `entry` is the "#1#salt#verifier" the
+-- engine handed to create_auth; the plaintext never reaches this server.
+function hashimon.luanti_register(secret, name, entry, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-register",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json({ name = name, password = entry }),
+	}, function(res)
+		if not res.completed then
+			callback(false, "request_incomplete", nil)
+			return
+		end
+		if res.code == 409 then
+			callback(false, "username_taken", nil)
+			return
+		end
+		if res.code ~= 200 and res.code ~= 201 then
+			callback(false, http_failure_code(res), nil)
+			return
+		end
+		callback(true, nil, parse_json_or_nil(res.data))
 	end)
 end
