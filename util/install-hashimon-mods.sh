@@ -19,7 +19,7 @@ else
 fi
 
 mkdir -p "$USER_MODS"
-for mod in hashimon_core hashimon_entities hashimon_village_war discovery_maps; do
+for mod in hashimon_core hashimon_entities hashimon_village_war discovery_maps hashimon_qr_tree; do
 	dest="$USER_MODS/$mod"
 	if [[ -L "$dest" || -d "$dest" ]]; then
 		rm -rf "$dest"
@@ -49,9 +49,10 @@ echo ""
 echo "Use your existing Minetest world (recommended):"
 echo "  1. Main menu → game MINETEST (not Hashimon)"
 echo "  2. Open a world (e.g. Hashiworld) or create one with a seed you like"
-echo "  3. Content DB → enable hashimon mods + discovery_maps (symlinked) + mg_villages"
+echo "  3. Content DB → enable hashimon mods + discovery_maps + hashimon_qr_tree (symlinked) + mg_villages"
 echo "  4. Start API: cd api && npm run dev"
 echo "  5. In-game: /hashimon session → /hashimon starter → /hashimon sync"
-echo "  6. Villages: /vwar declare (inside village) to allow building for everyone"
+echo "  6. QR sponsors (admin): /qr_tree place aarontolentino → /qr_tree align aarontolentino"
+echo "  7. Villages: /vwar declare (inside village) to allow building for everyone"
 echo ""
 echo "Hashimons spawn in a grid around you — explore Minetest terrain as usual."

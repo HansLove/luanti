@@ -52,6 +52,31 @@ function hashimon_bodies.apply_morphology(self, creature, morph)
 		color = "#E0E7FF",
 	})
 
+	-- Clear first: bone scale is multiplicative against the animation, so
+	-- re-applying without clearing would compound on every respawn/resync.
+	hashimon_bodies.clear_proportions(self, morph)
+	local shaped = hashimon_bodies.apply_proportions(self, morph)
+	if shaped > 0 then
+		local p = morph.proportions or {}
+		local t = p.traits or {}
+		local function axis_or(trait, vec, fallback)
+			if type(trait) == "number" then
+				return trait
+			end
+			if type(vec) == "table" and type(vec.x) == "number" then
+				return vec.x
+			end
+			return fallback
+		end
+		core.log("info", string.format(
+			"[hashimon_bodies] %s: %d bone(s) shaped (head %.2f neck %.2f torso %.2f limbs %.2f)",
+			tostring(morph.body_id), shaped,
+			axis_or(t.headScale, p.head, 1),
+			axis_or(t.neckLength, p.neck, 1),
+			axis_or(t.torsoWidth, p.torso, 1),
+			axis_or(t.limbLength, p.limbs, 1)))
+	end
+
 	hashimon_bodies.apply_attachments(self, morph)
 end
 

@@ -1,0 +1,9 @@
+{
+  "name": "hashimon-qr-tree-util",
+  "private": true,
+  "type": "module",
+  "description": "Offline bake tool for Hashimon QR tree schematics",
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
+}

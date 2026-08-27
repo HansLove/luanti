@@ -1,0 +1,19 @@
+{
+  "id": "aarontolentino",
+  "url": "https://aarontolentino.com/",
+  "module_size": 1,
+  "quiet_zone": 4,
+  "qr_modules": 33,
+  "grid_modules": 41,
+  "size_x": 41,
+  "size_y": 1,
+  "size_z": 41,
+  "footprint": 41,
+  "center_offset": 20,
+  "ecc": "H",
+  "nodes": [
+    "hashimon_qr_tree:dark",
+    "hashimon_qr_tree:light"
+  ],
+  "baked_at": "2026-08-27T05:31:18.565Z"
+}

@@ -45,69 +45,87 @@ local SIZE_SCALE = {
 	diminutive = 0.85, small = 0.93, medium = 1.0, large = 1.10, huge = 1.20, massive = 1.30,
 }
 
--- Element pools. The element narrows WHICH bodies are plausible; the DNA picks
--- one within that pool. That is deliberately NOT "element determines body" —
--- every pool holds several families, so two Fire Hashimon usually differ in
--- silhouette (see ADN_PROPIEDAD_TEORIA_DE_JUEGO.md §7: type and body are
--- independent axes).
+-- Element pools, expressed as FAMILY names — never as body ids.
 --
--- Unregistered ids are filtered out at pick time (filter_registered), so listing
--- an optional body like dragon_wyvern is safe when draconis is absent.
+-- This is the licence firewall. hashimon_core must not know that a "theropod"
+-- happens to be paleotest_velociraptor.b3d (GPL-3.0) or that a "construct" is
+-- dmobs golem.b3d (CC BY-SA 3.0). Core states intent; whichever body pack is
+-- installed answers it through hashimon.register_body(). Swap or delete a pack
+-- and the DNA, species and protocol are untouched — only the silhouette changes.
 --
--- NOTE: the rarity policy (which bodies Genesis may roll vs. which are reserved
--- for Natural/Bitcoin-seeded births) is still undecided — see §3 of the
--- morphology discussion. These pools preserve the previous policy (wyvern
--- already reachable from fuego/astro/magia/vacío) and only fix the diversity
--- collapse. Revisit here once that decision lands.
-local G0_POOLS = {
-	fuego = { "canine_wolf", "feline_cat", "canine_fox", "dragon_wyvern" },
-	agua = { "amphibian_frog", "rodent_rat", "feline_cat", "canine_wolf" },
-	aire = { "avian_bat", "avian_owl", "avian_songbird", "feline_cat" },
-	tierra = { "ursine_bear", "equine_horse", "canine_wolf", "rodent_rat" },
-	["eléctrico"] = { "rodent_rat", "feline_cat", "canine_fox", "avian_bat" },
-	electrico = { "rodent_rat", "feline_cat", "canine_fox", "avian_bat" },
-	pixel = { "feline_cat", "rodent_rat", "canine_fox", "avian_songbird" },
-	onda = { "avian_songbird", "amphibian_frog", "canine_fox", "avian_bat" },
-	astro = { "avian_owl", "equine_horse", "dragon_wyvern", "feline_cat" },
-	["sueño"] = { "avian_owl", "feline_cat", "amphibian_frog", "avian_bat" },
-	sueno = { "avian_owl", "feline_cat", "amphibian_frog", "avian_bat" },
-	magia = { "avian_owl", "feline_cat", "dragon_wyvern", "avian_bat" },
-	metal = { "ursine_bear", "equine_horse", "canine_wolf", "rodent_rat" },
-	hongo = { "amphibian_frog", "rodent_rat", "ursine_bear", "canine_fox" },
-	mental = { "avian_owl", "feline_cat", "rodent_rat", "avian_bat" },
-	vegetal = { "amphibian_frog", "ursine_bear", "canine_fox", "avian_songbird" },
-	["espíritu"] = { "avian_bat", "avian_owl", "feline_cat", "canine_fox" },
-	espiritu = { "avian_bat", "avian_owl", "feline_cat", "canine_fox" },
-	["vacío"] = { "avian_bat", "dragon_wyvern", "rodent_rat", "avian_owl" },
-	vacio = { "avian_bat", "dragon_wyvern", "rodent_rat", "avian_owl" },
+-- A family with no registered body is skipped at selection time, so a world
+-- without the optional packs still works with whatever it does have.
+local G0_FAMILY_POOLS = {
+	fuego = { "canine", "feline", "theropod", "dragon", "megafauna" },
+	agua = { "aquatic", "amphibian", "marine_reptile", "crocodilian", "rodent" },
+	aire = { "avian", "pterosaur", "feline", "arthropod" },
+	tierra = { "ursine", "equine", "ceratopsian", "stegosaur", "chelonian", "livestock" },
+	["eléctrico"] = { "rodent", "feline", "canine", "avian", "marsupial" },
+	electrico = { "rodent", "feline", "canine", "avian", "marsupial" },
+	pixel = { "feline", "rodent", "construct", "avian" },
+	onda = { "avian", "aquatic", "amphibian", "pterosaur" },
+	astro = { "avian", "pterosaur", "dragon", "equine", "construct" },
+	["sueño"] = { "avian", "feline", "amphibian", "marsupial" },
+	sueno = { "avian", "feline", "amphibian", "marsupial" },
+	magia = { "avian", "feline", "dragon", "humanoid", "flora" },
+	metal = { "ursine", "construct", "chelonian", "megafauna", "sauropod" },
+	hongo = { "amphibian", "rodent", "flora", "arthropod", "chelonian" },
+	mental = { "avian", "feline", "rodent", "humanoid" },
+	vegetal = { "flora", "amphibian", "chelonian", "livestock", "sauropod" },
+	["espíritu"] = { "avian", "feline", "canine", "humanoid" },
+	espiritu = { "avian", "feline", "canine", "humanoid" },
+	["vacío"] = { "avian", "dragon", "humanoid", "marine_reptile", "construct" },
+	vacio = { "avian", "dragon", "humanoid", "marine_reptile", "construct" },
 }
 
--- Archetype -> candidate bodies (DNA picks within). Previously this collapsed
--- 9 of 16 archetypes onto canine_wolf, which is why every Hashimon rendered as
--- a wolf regardless of its compiled archetype.
---
--- arachnid / mollusk / humanoid / construct have no faithful skeleton in the
--- MIT stack (Animalia + Draconis). They map to the nearest available silhouette
--- rather than to wolf; real bodies for them need the dmobs tier (golem, orc,
--- wasp — CC BY-SA 3.0, licence decision pending) or a Meshy/procedural body.
-local ARCHETYPE_BODY_POOLS = {
-	canine = { "canine_wolf", "canine_fox" },
-	feline = { "feline_cat" },
-	ursine = { "ursine_bear" },
-	avian = { "avian_bat", "avian_owl", "avian_songbird" },
-	aquatic = { "amphibian_frog" }, -- placeholder: no fish body registered yet
-	reptilian = { "dragon_wyvern", "amphibian_frog" },
-	arachnid = { "rodent_rat" }, -- placeholder: needs dmobs wasp / Meshy
-	mollusk = { "amphibian_frog" }, -- placeholder
-	humanoid = { "ursine_bear" }, -- placeholder: needs dmobs orc/skeleton
-	construct = { "ursine_bear", "equine_horse" }, -- placeholder: needs dmobs golem
-	celestial = { "avian_owl", "equine_horse" },
-	spectral = { "avian_bat", "avian_owl" },
-	fungal = { "amphibian_frog", "rodent_rat" },
-	crystalline = { "dragon_wyvern", "feline_cat" },
-	amorphous = { "amphibian_frog", "rodent_rat" },
-	hybrid = { "canine_fox", "feline_cat", "avian_bat" },
+-- Archetype -> candidate families, for births past Genesis.
+local ARCHETYPE_FAMILY_POOLS = {
+	canine = { "canine" },
+	feline = { "feline" },
+	ursine = { "ursine", "megafauna" },
+	avian = { "avian", "pterosaur" },
+	aquatic = { "aquatic", "marine_reptile" },
+	reptilian = { "theropod", "crocodilian", "ceratopsian", "stegosaur", "chelonian" },
+	arachnid = { "arthropod" },
+	mollusk = { "aquatic", "amphibian" },
+	humanoid = { "humanoid", "marsupial" },
+	construct = { "construct" },
+	celestial = { "pterosaur", "dragon", "equine" },
+	spectral = { "avian", "humanoid" },
+	fungal = { "flora", "amphibian" },
+	crystalline = { "dragon", "construct", "ceratopsian" },
+	amorphous = { "aquatic", "amphibian" },
+	hybrid = { "canine", "feline", "avian", "marsupial" },
 }
+
+-- Size tiers keep a stage-1 player off a five-node sauropod. Derived from the
+-- body's own hitbox height, so a pack author never declares this by hand.
+local function size_tier(body)
+	local h = (body and body.hitbox and body.hitbox.height) or 0.7
+	if h < 1.0 then return 1 end
+	if h < 2.5 then return 2 end
+	return 3
+end
+
+--- Largest size tier a creature may wear at this stage.
+function hashimon.max_size_tier(stage)
+	stage = stage or 1
+	if stage >= 15 then return 3 end
+	if stage >= 6 then return 2 end
+	return 1
+end
+
+--- Registered bodies belonging to a family, no larger than max_tier.
+function hashimon.bodies_in_family(family, max_tier)
+	local out = {}
+	for id, body in pairs(hashimon._body_registry) do
+		if body.family == family and size_tier(body) <= (max_tier or 3) then
+			out[#out + 1] = id
+		end
+	end
+	table.sort(out) -- deterministic: pairs() order is not stable across runs
+	return out
+end
 
 local function dna_pick(dna, position, length, list)
 	local span = 16 ^ length
@@ -170,50 +188,174 @@ local function pick_signature(dna)
 	return dna_pick(dna, 51, 1, SIGNATURE_FEATURES)
 end
 
-local function filter_registered(pool)
+--- Families from a list that actually have at least one registered body.
+--- Deliberately NOT filtered by size tier: which family a creature belongs to
+--- must not change as it grows.
+local function available_families(families)
 	local out = {}
-	for _, id in ipairs(pool) do
-		if hashimon._body_registry[id] then
-			table.insert(out, id)
+	for _, family in ipairs(families or {}) do
+		if #hashimon.bodies_in_family(family, 3) > 0 then
+			out[#out + 1] = family
 		end
 	end
 	return out
 end
 
-local function pick_body_id(creature, dna, element_type, generation)
+--- A family's bodies ordered smallest to largest — the evolution line.
+local function evolution_line(family)
+	local ids = hashimon.bodies_in_family(family, 3)
+	table.sort(ids, function(a, b)
+		local ha = hashimon.get_body(a).hitbox.height
+		local hb = hashimon.get_body(b).hitbox.height
+		if ha == hb then return a < b end -- stable tiebreak
+		return ha < hb
+	end)
+	return ids
+end
+
+--- Pick the body a creature wears right now.
+---
+--- Two rules keep evolution coherent, and both exist because of a real bug: the
+--- first version re-picked from a stage-filtered pool, so the same DNA landed on
+--- a different index as the pool grew. A water Hashimon went
+--- parrotfish -> whale -> FROG, and a hedgehog turned into a crocodile.
+---
+---   1. The FAMILY is chosen from DNA + element only. Never from stage. A fish
+---      is a fish for life; it can never become a theropod.
+---   2. Inside that family, DNA picks the creature's FINAL body once — its
+---      destiny. While the creature is too low-stage to carry it, it wears the
+---      largest body of the same family that its stage does allow.
+---
+--- So growth walks up one family's line (minnow -> dolphin -> whale) and lands
+--- on the body the DNA chose at birth. Same shape as a Pokemon evolution line,
+--- and just as predetermined.
+local function pick_body_id(creature, dna, element_type, generation, stage)
 	local entry = species_entry(creature)
 	if entry and entry.skeleton and hashimon._body_registry[entry.skeleton] then
 		return entry.skeleton
 	end
+
+	local families
 	if entry and entry.bodyFamily then
-		for id, body in pairs(hashimon._body_registry) do
-			if body.family == entry.bodyFamily then
-				return id
-			end
-		end
-	end
-
-	local pool
-	if generation <= 0 then
-		pool = G0_POOLS[element_type]
+		families = { entry.bodyFamily }
+	elseif generation <= 0 then
+		families = G0_FAMILY_POOLS[element_type]
 	else
-		-- Beyond Genesis the compiled archetype leads: it is the trait that says
-		-- what KIND of creature this is, so it selects the candidate bodies.
-		pool = ARCHETYPE_BODY_POOLS[pick_archetype(dna)]
+		families = ARCHETYPE_FAMILY_POOLS[pick_archetype(dna)]
 	end
 
-	pool = filter_registered(pool or {})
-	if #pool == 0 then
-		-- Never fall back to a single hardcoded body — that is what collapsed
-		-- every Hashimon into a wolf. Use whatever is actually registered.
-		pool = hashimon.list_bodies()
+	families = available_families(families)
+	if #families == 0 then
+		-- No pack covers the intended families; fall back to whatever exists so a
+		-- creature is never bodyless.
+		local all = {}
+		for _, id in ipairs(hashimon.list_bodies()) do
+			local fam = hashimon.get_body(id).family
+			if fam then all[fam] = true end
+		end
+		for fam in pairs(all) do families[#families + 1] = fam end
+		table.sort(families)
 	end
-	if #pool == 0 then
+	if #families == 0 then
 		return nil
 	end
 
-	-- Reserved nibble [8] picks the body within the pool.
-	return dna_pick(dna, 8, 1, pool)
+	-- [8]: family. Fixed for life.
+	local family = dna_pick(dna, 8, 1, families)
+	local line = evolution_line(family)
+	if #line == 0 then
+		return nil
+	end
+
+	-- [59]: destiny body within the family. Also fixed for life.
+	local destiny = dna_pick(dna, 59, 1, line)
+	local max_tier = hashimon.max_size_tier(stage)
+	if size_tier(hashimon.get_body(destiny)) <= max_tier then
+		return destiny
+	end
+
+	-- Too big for now: wear the largest body of this family that is allowed.
+	local worn = line[1]
+	for _, id in ipairs(line) do
+		if size_tier(hashimon.get_body(id)) <= max_tier then
+			worn = id
+		end
+	end
+	return worn
+end
+
+-- Per-part proportions, as ABSTRACT multipliers. Core never names a bone: it
+-- says "this creature has a slightly big head" and the body pack maps that onto
+-- whatever its skeleton calls that part. Same firewall as the family pools.
+--
+-- Six independent traits, one reserved nibble each. Ranges are deliberately
+-- narrow: bone scale composes with the animation, so a 1.5x head does not read
+-- as "characterful", it reads as broken.
+local PART_TRAITS = {
+	headScale   = { pos = 53, min = 0.86, span = 0.34 }, -- 0.86 .. 1.20
+	neckLength  = { pos = 54, min = 0.88, span = 0.27 }, -- 0.88 .. 1.15
+	torsoWidth  = { pos = 55, min = 0.93, span = 0.17 }, -- 0.93 .. 1.10
+	torsoLength = { pos = 56, min = 0.93, span = 0.17 }, -- 0.93 .. 1.10
+	limbLength  = { pos = 57, min = 0.90, span = 0.22 }, -- 0.90 .. 1.12
+	tailScale   = { pos = 58, min = 0.85, span = 0.35 }, -- 0.85 .. 1.20
+}
+
+-- The build trait already describes the silhouette; let it bias the parts so
+-- "stocky" and "delicate" mean something beyond overall size.
+local BUILD_BIAS = {
+	delicate = { torsoWidth = -0.05, limbLength = 0.04 },
+	lean     = { torsoWidth = -0.03, torsoLength = 0.03, limbLength = 0.03 },
+	balanced = {},
+	stocky   = { torsoWidth = 0.05, limbLength = -0.03 },
+	muscular = { torsoWidth = 0.06, headScale = 0.03, limbLength = 0.02 },
+	bulbous  = { torsoWidth = 0.08, torsoLength = -0.02, limbLength = -0.05 },
+	angular  = { torsoWidth = -0.02, torsoLength = 0.02, limbLength = 0.02 },
+	round    = { torsoWidth = 0.04, torsoLength = -0.03, limbLength = -0.04 },
+}
+
+--- Turn trait scalars into a per-axis scale vector for one part.
+---
+--- EXTENSION POINT. Everything is uniform today, on purpose: a bone's local
+--- axes are model-dependent, and scaling a neck along the wrong one makes it
+--- fat instead of long. torsoWidth/torsoLength and neckLength/limbLength are
+--- already derived separately and carried through — the moment the bone-local
+--- axis convention is confirmed in-game for a given skeleton, this is the only
+--- function that has to change, and no pack or core caller moves.
+local function axes(part, t)
+	if part == "head" then
+		return { x = t.headScale, y = t.headScale, z = t.headScale }
+	elseif part == "neck" then
+		local v = t.neckLength
+		return { x = v, y = v, z = v }
+	elseif part == "torso" then
+		-- Average until the axes are known; the two traits stay distinct above.
+		local v = (t.torsoWidth + t.torsoLength) * 0.5
+		return { x = v, y = v, z = v }
+	elseif part == "tail" then
+		return { x = t.tailScale, y = t.tailScale, z = t.tailScale }
+	end
+	local v = t.limbLength
+	return { x = v, y = v, z = v }
+end
+
+--- Abstract per-part scale vectors for a creature.
+--- Nibbles [53]-[58] are reserved space; this is their first use.
+function hashimon.derive_proportions(dna, look)
+	local build = (look and look.build) or "balanced"
+	local bias = BUILD_BIAS[build] or {}
+	local t = {}
+	for name, spec in pairs(PART_TRAITS) do
+		local w = tonumber(dna:sub(spec.pos, spec.pos), 16) or 0
+		t[name] = spec.min + (w / 16) * spec.span + (bias[name] or 0)
+	end
+	return {
+		traits = t, -- the six raw values, for callers that want them individually
+		head = axes("head", t),
+		neck = axes("neck", t),
+		torso = axes("torso", t),
+		limbs = axes("limbs", t),
+		tail = axes("tail", t),
+	}
 end
 
 --- "^[contrast:<c>:<b>" for bodies that declare a lift, "" otherwise.
@@ -285,13 +427,13 @@ function hashimon.compile_morphology(creature)
 	end
 	local ramp = hashimon.derive_color_ramp(look)
 	local generation = hashimon.creature_generation(creature)
-	local body_id = pick_body_id(creature, creature.dna, element_type, generation)
+	local stage = hashimon.creature_stage(creature)
+	local body_id = pick_body_id(creature, creature.dna, element_type, generation, stage)
 	local body_def = body_id and hashimon.get_body(body_id)
 	if not body_def then
 		return nil
 	end
 
-	local stage = hashimon.creature_stage(creature)
 	local signature = pick_signature(creature.dna)
 	local archetype = pick_archetype(creature.dna)
 
@@ -314,6 +456,7 @@ function hashimon.compile_morphology(creature)
 		-- pulled apart before tinting or it renders as one solid blob.
 		texture_mod = contrast_mod(body_def) .. hashimon.texture_mod_from_ramp(ramp),
 		visual_size = hashimon.morph_visual_size(creature, look, body_def),
+		proportions = hashimon.derive_proportions(creature.dna, look),
 		attachments = resolve_attachments(signature, element_type, look, stage),
 		aura = stage >= 5 or signature == "aura" or look.material == "crystal",
 		stage = stage,

@@ -12,6 +12,7 @@ local modpath = core.get_modpath("hashimon_bodies")
 
 dofile(modpath .. "/anim_fsm.lua")
 dofile(modpath .. "/attachments.lua")
+dofile(modpath .. "/proportions.lua")
 dofile(modpath .. "/mobs/common.lua")
 dofile(modpath .. "/spawn.lua")
 
@@ -20,6 +21,8 @@ dofile(modpath .. "/spawn.lua")
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "canine_wolf",
+	bones = { head = "Head", neck = "Neck", torso = "Torso",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "canine",
 	mesh = "animalia_wolf.b3d",
 	textures = {
@@ -48,6 +51,7 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "avian_bat",
+	bones = { head = "Head", torso = "Torso", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "avian",
 	mesh = "animalia_bat.b3d",
 	-- All three bat skins are dark and near-flat (sd<0.07, max lum<0.4).
@@ -75,6 +79,7 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "canine_fox",
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail" },
 	family = "canine",
 	mesh = "animalia_fox.b3d",
 	textures = { "animalia_fox_1.png" },
@@ -102,6 +107,8 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "feline_cat",
+	bones = { head = "Head", neck = "Neck", torso = "Torso",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "feline",
 	mesh = "animalia_cat.b3d",
 	textures = {
@@ -132,6 +139,7 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "ursine_bear",
+	bones = { head = "Head", neck = "Neck", torso = "Torso" },
 	family = "ursine",
 	mesh = "animalia_bear.b3d",
 	-- Only skin shipped, dark and near-flat (sd 0.038).
@@ -163,6 +171,9 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "equine_horse",
+	bones = {
+		head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "equine",
 	mesh = "animalia_horse.b3d",
 	textures = {
@@ -194,6 +205,9 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "rodent_rat",
+	bones = {
+		head = "Head", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "rodent",
 	mesh = "animalia_rat.b3d",
 	textures = { "animalia_rat_1.png", "animalia_rat_2.png" },
@@ -214,6 +228,7 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "avian_owl",
+	bones = { head = "Head", torso = "Torso", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "avian",
 	mesh = "animalia_owl.b3d",
 	-- Only skin shipped, low contrast (sd 0.069) though not dark.
@@ -236,6 +251,9 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "avian_songbird",
+	bones = {
+		head = "Head", torso = "Torso", leg_l = "Leg.L",
+		leg_r = "Leg.R", wing_l = "Wing.L", wing_r = "Wing.R" },
 	family = "avian",
 	mesh = "animalia_bird.b3d",
 	textures = {
@@ -260,6 +278,9 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "amphibian_frog",
+	bones = {
+		head = "Head", torso = "Torso", arm_l = "Arm.L",
+		arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "amphibian",
 	mesh = "animalia_dart_frog.b3d",
 	textures = {
@@ -310,6 +331,8 @@ if core.get_modpath("draconis") then
 else
 	core.log("action", "[hashimon_bodies] draconis not loaded — dragon_wyvern body skipped")
 end
+
+dofile(modpath .. "/bodies_mit_extra.lua")
 
 core.log("action", "[hashimon_bodies] Registered morphology bodies: "
 	.. table.concat(hashimon.list_bodies(), ", "))

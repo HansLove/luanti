@@ -29,6 +29,9 @@ local PALETTE = {
 -- MANUAL OVERRIDES - Highest priority, exact node name matches
 -- ============================================================================
 local manual_overrides = {
+	-- Hashimon QR sponsor groves (admin debug on /map)
+	["hashimon_qr_tree:dark"] = {16, 16, 16},
+	["hashimon_qr_tree:light"] = {240, 240, 240},
 	-- Special cases that don't fit auto-detection well
 	["default:apple"] = PALETTE.GOLD_YELLOW,
 	["mcl_core:obsidian"] = {20, 10, 30},
