@@ -61,7 +61,9 @@ hashimon.GENESIS_MOBILITY = {
 		cruise = 8,
 		jump = 16,
 		glide = true,
-		hint = "Montado (Fuego) — WASD, super salto + planeo, click derecho para bajar.",
+		propel = 22, -- hold aux1 horizontal speed
+		propel_air = 26, -- mid-air aux1 (leap thrust)
+		hint = "Montado (Fuego) — WASD; salto = salto potente; mantén Sprint/aux1 = propulsión (fuego, no vuelo); click derecho para bajar.",
 	},
 	agua = {
 		id = "agua",
@@ -219,6 +221,8 @@ local function clear_mount_runtime(ent)
 	ent._mount_burrowing = nil
 	ent._burrow_hint_sent = nil
 	ent._fire_jumped = nil
+	ent._fire_fx_t = nil
+	ent._fire_propelling = nil
 	ent.mount_speed = nil
 	if ent._pre_mount_acc then
 		ent.object:set_acceleration(ent._pre_mount_acc)
@@ -251,6 +255,8 @@ function hashimon.mount(player, mount_obj)
 	ent._mount_burrowing = false
 	ent._burrow_hint_sent = false
 	ent._fire_jumped = false
+	ent._fire_fx_t = 0
+	ent._fire_propelling = false
 	ent._water_hyper = false
 	ent._water_fx_t = 0
 	ent._water_glow_on = false
@@ -508,6 +514,41 @@ local function emit_water_hyper_trail(pos, dir)
 	})
 end
 
+local function emit_fire_trail(pos, dir)
+	core.add_particlespawner({
+		amount = 18,
+		time = 0.1,
+		minpos = { x = pos.x - 0.4, y = pos.y - 0.1, z = pos.z - 0.4 },
+		maxpos = { x = pos.x + 0.4, y = pos.y + 0.8, z = pos.z + 0.4 },
+		minvel = { x = -dir.x * 3 - 0.5, y = 0.2, z = -dir.z * 3 - 0.5 },
+		maxvel = { x = -dir.x * 6 + 0.5, y = 2.2, z = -dir.z * 6 + 0.5 },
+		minacc = { x = 0, y = 1, z = 0 },
+		maxacc = { x = 0, y = 3, z = 0 },
+		minexptime = 0.2,
+		maxexptime = 0.45,
+		minsize = 1.5,
+		maxsize = 3.5,
+		texture = "default_mese_crystal_fragment.png^[colorize:#F97316:160",
+		glow = 12,
+	})
+	core.add_particlespawner({
+		amount = 8,
+		time = 0.08,
+		minpos = { x = pos.x - 0.25, y = pos.y - 0.05, z = pos.z - 0.25 },
+		maxpos = { x = pos.x + 0.25, y = pos.y + 0.4, z = pos.z + 0.25 },
+		minvel = { x = -dir.x * 2 - 0.3, y = 0.5, z = -dir.z * 2 - 0.3 },
+		maxvel = { x = -dir.x * 4 + 0.3, y = 1.8, z = -dir.z * 4 + 0.3 },
+		minacc = { x = 0, y = 0.5, z = 0 },
+		maxacc = { x = 0, y = 2, z = 0 },
+		minexptime = 0.15,
+		maxexptime = 0.35,
+		minsize = 1.0,
+		maxsize = 2.2,
+		texture = "default_mese_crystal_fragment.png^[colorize:#FDE68A:140",
+		glow = 14,
+	})
+end
+
 local WATER_GLOW_CRUISE = 8
 local WATER_GLOW_HYPER = 14
 
@@ -708,6 +749,8 @@ function hashimon.set_mount_element_override(ent, element)
 	ent.mount_speed = hashimon.mount_speed_for(creature, profile)
 	ent._mount_glide = false
 	ent._fire_jumped = false
+	ent._fire_propelling = false
+	ent._fire_fx_t = 0
 
 	if ent.rider then
 		local rider = core.get_player_by_name(ent.rider)
@@ -798,6 +841,25 @@ function hashimon.step_mounted(self, dtime)
 		speed = profile.sprint * dna_speed_mult(creature)
 	end
 
+	-- --- Fuego: hold aux1 = ground/air propulsion (not flight) ---
+	local fire_propel = false
+	if profile.glide and control.aux1 then
+		fire_propel = true
+		self._fire_propelling = true
+		local airborne = self._fire_jumped or math.abs(vel.y) > 0.15
+		local propel_spd = airborne
+			and (profile.propel_air or 26)
+			or (profile.propel or 22)
+		speed = propel_spd * dna_speed_mult(creature)
+		self._fire_fx_t = (self._fire_fx_t or 0) + dtime
+		if self._fire_fx_t >= 0.1 then
+			self._fire_fx_t = 0
+			emit_fire_trail(pos, dir)
+		end
+	elseif profile.glide then
+		self._fire_propelling = false
+	end
+
 	-- --- Air: flight boost ---
 	local boost = 1
 	if mode == "fly" and control.aux1 then
@@ -805,7 +867,12 @@ function hashimon.step_mounted(self, dtime)
 		speed = cruise * boost
 	end
 
-	local vx, vz = horizontal_velocity(dir, speed, forward)
+	-- Rocket feels committed: push forward even if W is idle while propelling.
+	local move_fwd = forward
+	if fire_propel and math.abs(move_fwd) < 0.05 then
+		move_fwd = 1
+	end
+	local vx, vz = horizontal_velocity(dir, speed, move_fwd)
 	local vy = vel.y
 
 	-- --- Tierra burrow: hold aux1 to carve + travel underground ---
@@ -874,6 +941,7 @@ function hashimon.step_mounted(self, dtime)
 		self.object:set_acceleration({ x = 0, y = 0, z = 0 })
 	else
 		-- Ground (fire / electric / earth surface / generic / water-on-land)
+		-- Gravity always on for Fuego — propulsion is thrust, not flight.
 		if not in_liquid then
 			self.object:set_acceleration({ x = 0, y = GRAVITY, z = 0 })
 		end
@@ -882,7 +950,7 @@ function hashimon.step_mounted(self, dtime)
 		local on_ground = math.abs(vel.y) < 0.08
 
 		if profile.glide then
-			-- Fire: super jump, then glide after apex until landing.
+			-- Fire: super jump, then glide / propelled leap until landing.
 			if control.jump and on_ground and not self._fire_jumped then
 				vy = jump_v
 				self._fire_jumped = true
@@ -891,14 +959,22 @@ function hashimon.step_mounted(self, dtime)
 				if vel.y <= 0.4 then
 					self._mount_glide = true
 				end
-				if self._mount_glide then
-					if vy < -GLIDE_GRAVITY * 12 then
-						vy = -GLIDE_GRAVITY * 12
+				if fire_propel then
+					-- Mid-air aux1: hard horizontal already applied; soft fall only.
+					local fall_cap = -GLIDE_GRAVITY * 8
+					if vy < fall_cap then
+						vy = fall_cap
 					end
-					vy = vy * 0.92
-					if math.abs(vx) + math.abs(vz) < 0.05 and forward >= 0 then
-						vx = dir.x * cruise * 0.35 * GLIDE_FORWARD
-						vz = dir.z * cruise * 0.35 * GLIDE_FORWARD
+				elseif self._mount_glide then
+					-- Snappier non-boost glide: less float, stronger forward carry.
+					local fall_cap = -GLIDE_GRAVITY * 16
+					if vy < fall_cap then
+						vy = fall_cap
+					end
+					vy = vy * 0.96
+					if math.abs(forward) < 0.05 then
+						vx = dir.x * cruise * 0.7 * GLIDE_FORWARD
+						vz = dir.z * cruise * 0.7 * GLIDE_FORWARD
 					end
 				end
 				if on_ground and vel.y <= 0.05 then
@@ -907,6 +983,15 @@ function hashimon.step_mounted(self, dtime)
 				end
 			elseif control.jump and on_ground then
 				vy = jump_v
+			end
+
+			-- Ground propulsion soft-fall does nothing; airborne without jump
+			-- flag still gets a mild fall clamp while thrusting.
+			if fire_propel and not on_ground and not self._fire_jumped then
+				local fall_cap = -GLIDE_GRAVITY * 8
+				if vy < fall_cap then
+					vy = fall_cap
+				end
 			end
 		else
 			if control.jump and on_ground then

@@ -452,7 +452,24 @@ function hashimon.morph_visual_size(creature, look, body_def)
 	local stage_scale = hashimon.visual_size_for_creature(creature)
 	local build = BUILD_SCALE[look.build or "balanced"] or 1.0
 	local size = SIZE_SCALE[look.size or "medium"] or 1.0
-	local base = (body_def and body_def.visual_size_base) or 10
+	-- ESCALA. En Luanti un nodo mide BS = 10 unidades internas (src/constants.h),
+	-- y content_cao.cpp:706 aplica setScale(visual_size) SIN multiplicar por BS.
+	-- Por tanto:
+	--
+	--     altura_en_nodos = unidades_de_malla * visual_size / 10
+	--
+	-- Los cuerpos .b3d de los packs vienen autorados a 1 unidad = 1 nodo, y por
+	-- eso todos usan visual_size_base = 10: 1 * 10 / 10 = 1 nodo. Un asset
+	-- propio raramente sale a esa escala (el de Meshy vino a 3.62 unidades para
+	-- una cría de 0.6 nodos), así que declarando `mesh_height` la base se deriva
+	-- sola y nadie tiene que hacer la cuenta a mano. Calcularla mal no da error:
+	-- sólo deja la criatura diez veces demasiado pequeña.
+	local base = body_def and body_def.visual_size_base
+	if not base and body_def and body_def.mesh_height and body_def.mesh_height > 0 then
+		local target = (body_def.hitbox and body_def.hitbox.height) or 1
+		base = target * 10 / body_def.mesh_height
+	end
+	base = base or 10
 	local s = base * stage_scale * build * size
 	return { x = s, y = s }
 end

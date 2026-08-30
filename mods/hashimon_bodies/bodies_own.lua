@@ -19,8 +19,6 @@
 --     corrige los tiempos, deja una sola textura (el base color) y borra las
 --     imágenes embebidas, que Luanti no soporta y pesaban 6.9 MB de los 7.0.
 
-local S = 0.17 -- ver nota de escala abajo
-
 -- ---------------------------------------------------------------------------
 -- DRAGON — cría propia. Es el tier 1 que a la línea Crown le faltaba:
 -- antes, su cuerpo más bajo era el wyvern de 1.51 nodos, así que un jugador de
@@ -61,6 +59,8 @@ hashimon_bodies.register_creatura_body({
 	},
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
 	hitbox = { width = 0.35, height = 0.6 },
-	visual_size_base = S,
+	-- Altura real de la malla en el .glb, medida sobre el accessor POSITION.
+	-- Con esto morphology.lua deriva visual_size_base solo; no se declara.
+	mesh_height = 3.62,
 	makes_footstep_sound = true,
 })
