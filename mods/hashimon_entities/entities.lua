@@ -147,7 +147,8 @@ end
 
 function hashimon.nametag_for_creature(creature)
 	local name = creature.name or creature.speciesKey or "Hashimon"
-	local stage = creature.stage or 1
+	local stage = hashimon.creature_stage and hashimon.creature_stage(creature)
+		or (creature.stars or creature.stage or creature.tier or 1)
 	return name .. " ★" .. tostring(stage)
 end
 
@@ -341,7 +342,11 @@ core.register_entity("hashimon_entities:creature", {
 		self.object:set_acceleration({ x = 0, y = GRAVITY, z = 0 })
 	end,
 
-	on_step = function(self, _dtime)
+	on_step = function(self, dtime)
+		if self.rider then
+			hashimon.step_mounted(self, dtime)
+			return
+		end
 		hashimon.step_follow_owner(self)
 	end,
 
@@ -387,7 +392,9 @@ core.register_entity("hashimon_entities:creature", {
 		if not clicker or not clicker:is_player() then
 			return
 		end
-		if hashimon.try_shift_blast_attack(clicker, self.object, self.creature, self.owner) then
+		if hashimon.try_owner_mount
+			and hashimon.try_owner_mount(clicker, self.object, self.creature, self.owner)
+		then
 			return
 		end
 		hashimon.send_creature_stats(clicker:get_player_name(), self.creature)

@@ -332,7 +332,9 @@ else
 	core.log("action", "[hashimon_bodies] draconis not loaded — dragon_wyvern body skipped")
 end
 
+dofile(modpath .. "/anim_protocol.lua")
 dofile(modpath .. "/bodies_mit_extra.lua")
+dofile(modpath .. "/bodies_own.lua")
 
 core.log("action", "[hashimon_bodies] Registered morphology bodies: "
 	.. table.concat(hashimon.list_bodies(), ", "))

@@ -138,8 +138,8 @@ core.register_on_joinplayer(function(player, _last_login)
 end)
 
 core.register_chatcommand("hashimon", {
-	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|worldpath>",
-	description = "Hashimon: sync roster (owners), status, debug login, attack, media, dna, worldpath",
+	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|evolve|mount|mount_element|worldpath>",
+	description = "Hashimon: sync roster (owners), status, debug login, attack, media, dna, evolve, mount, mount_element, worldpath",
 	func = function(name, param)
 		local player = core.get_player_by_name(name)
 		if not player then
@@ -255,7 +255,9 @@ core.register_chatcommand("hashimon", {
 			if not ref or not ref:get_luaentity() then
 				return false, "Invalid index. Use /hashimon dna 1, 2, ..."
 			end
-			local creature = ref:get_luaentity().creature
+			local creature = hashimon.creature_from_entity
+				and hashimon.creature_from_entity(ref:get_luaentity())
+				or ref:get_luaentity().creature
 			if not creature or not creature.dna then
 				return false, "That entry has no DNA on record."
 			end
@@ -265,6 +267,142 @@ core.register_chatcommand("hashimon", {
 		if cmd == "worldpath" then
 			return true, "World path: " .. core.get_worldpath() ..
 				"\nDrop custom media in: " .. core.get_worldpath() .. "/hashimon_media/"
+		end
+
+		if cmd == "evolve" then
+			if not core.check_player_privs(name, { server = true }) then
+				return false, "Requires the server privilege."
+			end
+			if not hashimon.spawn_roster then
+				return false, "hashimon_entities mod not loaded."
+			end
+			local refs = hashimon.get_roster_entities and hashimon.get_roster_entities(name) or {}
+			if #refs == 0 then
+				return false, "No Hashimon spawned. Use /hashimon sync first."
+			end
+
+			local stars_str, idx_str = rest:match("^(%S*)%s*(%S*)$")
+			local stars = tonumber(stars_str) or 10
+			local idx = tonumber(idx_str) or 1
+			if stars < 1 or stars > 33 then
+				return false, "Usage: /hashimon evolve [stars] [index]  (stars 1–33, default 10)"
+			end
+
+			local creatures = {}
+			for _, ref in ipairs(refs) do
+				local ent = ref and ref:get_luaentity()
+				local c = hashimon.creature_from_entity and hashimon.creature_from_entity(ent)
+				if c then
+					table.insert(creatures, c)
+				end
+			end
+			if idx < 1 or idx > #creatures then
+				return false, "Invalid index. Use /hashimon evolve 10 1"
+			end
+
+			if hashimon.mounts and hashimon.mounts[name] and hashimon.dismount then
+				hashimon.dismount(player)
+			end
+
+			if hashimon.apply_local_stars then
+				hashimon.apply_local_stars(creatures[idx], stars)
+			else
+				creatures[idx].stars = stars
+				creatures[idx].stage = stars
+				creatures[idx].tier = stars
+			end
+
+			hashimon.spawn_roster(name, creatures)
+			return true, string.format(
+				"Local evolve: [%d] %s → ★%d (not saved — /hashimon sync reverts).",
+				idx,
+				creatures[idx].name or creatures[idx].speciesKey or "?",
+				stars
+			)
+		end
+
+		if cmd == "mount" then
+			if not hashimon.mount_nearest_owned then
+				return false, "hashimon_entities mod not loaded."
+			end
+			local ok, result, stage = hashimon.mount_nearest_owned(player)
+			if ok then
+				if result == "dismounted" then
+					return true, "Desmontado."
+				end
+				return true, "Montado. Click derecho o /hashimon mount otra vez para bajar."
+			end
+			if result == "none_nearby" then
+				return false, "No hay Hashimon en tu roster. Usa /hashimon sync y /hashimon evolve 10."
+			elseif result == "too_far" then
+				return false, "Acércate a tu Hashimon (menos de 8 bloques)."
+			elseif result == "not_rideable" then
+				return false, string.format(
+					"Necesita ★%d (ahora ★%d). Usa /hashimon evolve %d",
+					hashimon.MOUNT_STAGE_THRESHOLD or 10,
+					stage or 0,
+					hashimon.MOUNT_STAGE_THRESHOLD or 10
+				)
+			end
+			return false, "No se pudo montar (" .. tostring(result) .. ")."
+		end
+
+		if cmd == "mount_element" then
+			if not core.check_player_privs(name, { server = true }) then
+				return false, "Requires the server privilege."
+			end
+			if not hashimon.set_mount_element_override then
+				return false, "hashimon_entities mod not loaded."
+			end
+
+			local elem = (rest:match("^(%S*)") or ""):lower()
+			if elem == "" then
+				return false, "Usage: /hashimon mount_element <fuego|agua|aire|tierra|electrico|clear>"
+			end
+
+			local ent
+			local mount_obj = hashimon.mounts and hashimon.mounts[name]
+			if mount_obj then
+				ent = mount_obj:get_luaentity()
+			end
+			if not ent then
+				local refs = hashimon.get_roster_entities and hashimon.get_roster_entities(name) or {}
+				local nearest, nearest_d
+				local ppos = player:get_pos()
+				for _, ref in ipairs(refs) do
+					local e = ref and ref:get_luaentity()
+					if e and ref:get_pos() and ppos then
+						local rpos = ref:get_pos()
+						local dx = rpos.x - ppos.x
+						local dy = rpos.y - ppos.y
+						local dz = rpos.z - ppos.z
+						local d = dx * dx + dy * dy + dz * dz
+						if not nearest_d or d < nearest_d then
+							nearest_d = d
+							nearest = e
+						end
+					end
+				end
+				ent = nearest
+			end
+			if not ent then
+				return false, "No mount nearby. Sync, evolve to ★10, then mount or stand next to it."
+			end
+
+			local ok, result = hashimon.set_mount_element_override(ent, elem)
+			if not ok then
+				if result == "invalid_element" then
+					return false, "Unknown element. Use: fuego, agua, aire, tierra, electrico, clear"
+				end
+				return false, "Could not set mount element."
+			end
+			if elem == "clear" or elem == "reset" then
+				return true, "Mount element override cleared — using DNA type again."
+			end
+			return true, string.format(
+				"Mount element override → %s (local only; cleared on dismount).",
+				tostring(result)
+			)
 		end
 
 		if cmd == "attack" then
@@ -306,6 +444,6 @@ core.register_chatcommand("hashimon", {
 			return true, "Blast orb launched."
 		end
 
-		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack"
+		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack, evolve, mount, mount_element"
 	end,
 })

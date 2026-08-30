@@ -27,8 +27,17 @@ local ARCHETYPES = {
 	"crystalline", "amorphous", "hybrid",
 }
 
+-- ORDEN CONGELADO. El rasgo se elige con dna_pick(dna, 51, 1, ...), así que la
+-- POSICIÓN es la identidad: reordenar esta lista le cambiaría la firma a cada
+-- Hashimon ya nacido. Renombrar un valor en su sitio es seguro (la firma se
+-- deriva en cada lectura y no se guarda en ninguna parte); moverlo no lo es.
+--
+-- El valor 2 se renombró a diadem para no chocar con el Signo Hashiano Crown:
+-- eran espacios de nombres distintos y no rompía nada, pero un Crown con ese
+-- rasgo se leía como intencional, y al filtrar logs birth_spirit y signature
+-- se confundían.
 local SIGNATURE_FEATURES = {
-	"none", "crown", "wings", "horns", "tail", "aura", "gemstone", "appendages",
+	"none", "diadem", "wings", "horns", "tail", "aura", "gemstone", "appendages",
 }
 
 -- Build and size MODULATE the stage scale; they must not dominate it. The
@@ -164,7 +173,13 @@ function hashimon.creature_generation(creature)
 	if creature.generation ~= nil then
 		return creature.generation
 	end
-	if creature.speciesKey and creature.speciesKey:match("^genesis_") then
+	-- V1 usaba el prefijo `genesis_`; V2 usa `g2_<espíritu>_<elemento>`. Ambos
+	-- son generación 0. Sólo importa en el camino de reserva (un Genesis V2
+	-- resuelve su linaje por espíritu antes de llegar aquí), pero llamarle
+	-- generación 1 a un Genesis sería falso y el error saldría en otro lado.
+	if creature.speciesKey
+		and (creature.speciesKey:match("^genesis_") or creature.speciesKey:match("^g2_"))
+	then
 		return 0
 	end
 	if creature.provenance == "starter" then
@@ -201,9 +216,24 @@ local function available_families(families)
 	return out
 end
 
---- A family's bodies ordered smallest to largest — the evolution line.
-local function evolution_line(family)
-	local ids = hashimon.bodies_in_family(family, 3)
+--- Bodies of a whole spirit line, ordered smallest to largest.
+---
+--- The families of one line are MERGED into a single ladder on purpose. Ten of
+--- the 25 families hold exactly one body, so a per-family ladder left them with
+--- no evolution at all: an `equine` Hashimon was a horse forever. Merged, Herd
+--- climbs pig -> sheep -> reindeer -> cow -> horse across livestock/cervid/
+--- equine.
+---
+--- Crossing families inside a line is NOT the incoherence bug that produced
+--- parrotfish -> whale -> frog. What is fixed for life is the SPIRIT, and no
+--- line mixes silhouettes that would let a fish end up a theropod.
+local function evolution_line(families)
+	local ids = {}
+	for _, family in ipairs(families) do
+		for _, id in ipairs(hashimon.bodies_in_family(family, 3)) do
+			ids[#ids + 1] = id
+		end
+	end
 	table.sort(ids, function(a, b)
 		local ha = hashimon.get_body(a).hitbox.height
 		local hb = hashimon.get_body(b).hitbox.height
@@ -211,6 +241,31 @@ local function evolution_line(family)
 		return ha < hb
 	end)
 	return ids
+end
+
+--- Families of a Birth Spirit's line that actually have a registered body.
+---
+--- Returns nil when the whole line AND every kin line are unregistered, so the
+--- caller can fall back to whatever the world does have.
+---
+--- Measured: with only the MIT pack installed, tyrant, bulwark and golem have
+--- no body at all (theropod/crocodilian are GPL-3.0; construct/humanoid/
+--- chelonian are CC BY-SA). Substituting the kin line keeps those births
+--- playable. It does NOT change the published identity — you are still a
+--- Tyrant, you just wear another mesh. Identity is protocol; body is render,
+--- and that separation is the whole point of the licence firewall.
+local function spirit_line_families(spirit_key)
+	local spirit = hashimon.spirit_by_key(spirit_key)
+	local seen = {}
+	while spirit and not seen[spirit.key] do
+		seen[spirit.key] = true
+		local fams = available_families(spirit.line)
+		if #fams > 0 then
+			return fams
+		end
+		spirit = spirit.kin and hashimon.spirit_by_key(spirit.kin) or nil
+	end
+	return nil
 end
 
 --- Pick the body a creature wears right now.
@@ -235,16 +290,22 @@ local function pick_body_id(creature, dna, element_type, generation, stage)
 		return entry.skeleton
 	end
 
-	local families
-	if entry and entry.bodyFamily then
-		families = { entry.bodyFamily }
-	elseif generation <= 0 then
-		families = G0_FAMILY_POOLS[element_type]
-	else
-		families = ARCHETYPE_FAMILY_POOLS[pick_archetype(dna)]
-	end
+	-- A Genesis V2 carries its Birth Spirit in its speciesKey, and the spirit --
+	-- not the element, and never the DNA -- owns the line. G0_FAMILY_POOLS only
+	-- still serves V1 Genesis rows that were archived rather than rewritten.
+	local spirit = hashimon.spirit_of_species(creature and creature.speciesKey)
+	local families = spirit and spirit_line_families(spirit) or nil
 
-	families = available_families(families)
+	if not families then
+		if entry and entry.bodyFamily then
+			families = { entry.bodyFamily }
+		elseif generation <= 0 then
+			families = G0_FAMILY_POOLS[element_type]
+		else
+			families = ARCHETYPE_FAMILY_POOLS[pick_archetype(dna)]
+		end
+		families = available_families(families)
+	end
 	if #families == 0 then
 		-- No pack covers the intended families; fall back to whatever exists so a
 		-- creature is never bodyless.
@@ -260,9 +321,9 @@ local function pick_body_id(creature, dna, element_type, generation, stage)
 		return nil
 	end
 
-	-- [8]: family. Fixed for life.
-	local family = dna_pick(dna, 8, 1, families)
-	local line = evolution_line(family)
+	-- A Genesis V2 walks its whole spirit line. Every other birth still picks a
+	-- single family with nibble [8], and that family is fixed for life.
+	local line = evolution_line(spirit and families or { dna_pick(dna, 8, 1, families) })
 	if #line == 0 then
 		return nil
 	end
@@ -369,7 +430,7 @@ end
 
 local function resolve_attachments(signature, element_type, look, stage)
 	local attachments = {}
-	if signature == "horns" or signature == "crown" then
+	if signature == "horns" or signature == "diadem" then
 		table.insert(attachments, "horns")
 	elseif signature == "wings" then
 		table.insert(attachments, "wings")

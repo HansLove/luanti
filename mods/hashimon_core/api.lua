@@ -264,6 +264,58 @@ function hashimon.luanti_bind(secret, name, callback)
 	end)
 end
 
+-- Push a player's Towny territory summary to the API. This is a projection for
+-- display on the website (town name, block/plot counts, mayor flag); it is not a
+-- ledger event and carries no ownership consequence. Server-secret authed.
+function hashimon.push_territory(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-territory",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then
+			if callback then callback(false, "request_incomplete") end
+			return
+		end
+		if res.code ~= 200 then
+			if callback then callback(false, http_failure_code(res)) end
+			return
+		end
+		if callback then callback(true, nil) end
+	end)
+end
+
+-- Push the WHOLE town snapshot (every town + its claimed mapblocks) to the API so the
+-- ranking is complete and the website can draw a cadastral map. Like push_territory,
+-- this is a display projection, never a ledger event. Server-secret authed.
+function hashimon.push_towns(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-towns",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then
+			if callback then callback(false, "request_incomplete") end
+			return
+		end
+		if res.code ~= 200 then
+			if callback then callback(false, http_failure_code(res)) end
+			return
+		end
+		if callback then callback(true, nil) end
+	end)
+end
+
 -- Push an in-game signup to the API. `entry` is the "#1#salt#verifier" the
 -- engine handed to create_auth; the plaintext never reaches this server.
 function hashimon.luanti_register(secret, name, entry, callback)

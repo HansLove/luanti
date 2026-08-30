@@ -9,6 +9,9 @@ dofile(modpath .. "/attack.lua")
 -- delete this line and test_bear.lua to remove it entirely.
 dofile(modpath .. "/test_bear.lua")
 
+-- Space-layer fauna (Y >= 5000): Nose Atu, idle 1–40 / hyper 40–65.
+dofile(modpath .. "/nose_atu.lua")
+
 if core.get_modpath("animalia") and core.get_modpath("creatura") then
 	dofile(modpath .. "/companion.lua")
 end

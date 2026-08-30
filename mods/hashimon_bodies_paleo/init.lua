@@ -301,3 +301,33 @@ R({
 })
 
 core.log("action", "[hashimon_bodies_paleo] registered 19 bodies")
+
+-- Compat: paleotest egg on_punch calls pickup_egg(puncher) and indexes
+-- puncher:get_inventory() without an is_player() guard. Draconis ice/fire
+-- breath AoE punches every nearby "mob" (eggs have `logic`, so they qualify)
+-- and crashes with "attempt to index local 'inv' (a nil value)".
+core.register_on_mods_loaded(function()
+	local patched = 0
+	for name, def in pairs(core.registered_entities) do
+		if type(name) == "string"
+			and name:find("^paleotest:egg_", 1, false)
+			and name:sub(-4) == "_ent"
+			and def.on_punch
+		then
+			local old_punch = def.on_punch
+			def.on_punch = function(self, puncher, ...)
+				if not puncher or not puncher:is_player() then
+					return
+				end
+				return old_punch(self, puncher, ...)
+			end
+			core.register_entity(":" .. name, def)
+			patched = patched + 1
+		end
+	end
+	if patched > 0 then
+		core.log("action",
+			"[hashimon_bodies_paleo] guarded " .. patched
+				.. " paleotest egg on_punch handlers (non-player punch safe)")
+	end
+end)

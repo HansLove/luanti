@@ -106,5 +106,670 @@
     "type": "eléctrico",
     "type2": null,
     "species": "genesis"
+  },
+  "g2_hearth_fuego": {
+    "name": "Ember Hearth",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "hearth",
+    "spiritLine": [
+      "canine"
+    ]
+  },
+  "g2_hearth_agua": {
+    "name": "Tide Hearth",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "hearth",
+    "spiritLine": [
+      "canine"
+    ]
+  },
+  "g2_hearth_aire": {
+    "name": "Gust Hearth",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "hearth",
+    "spiritLine": [
+      "canine"
+    ]
+  },
+  "g2_hearth_tierra": {
+    "name": "Root Hearth",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "hearth",
+    "spiritLine": [
+      "canine"
+    ]
+  },
+  "g2_hearth_electrico": {
+    "name": "Volt Hearth",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "hearth",
+    "spiritLine": [
+      "canine"
+    ]
+  },
+  "g2_mirror_fuego": {
+    "name": "Ember Mirror",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "mirror",
+    "spiritLine": [
+      "feline"
+    ]
+  },
+  "g2_mirror_agua": {
+    "name": "Tide Mirror",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "mirror",
+    "spiritLine": [
+      "feline"
+    ]
+  },
+  "g2_mirror_aire": {
+    "name": "Gust Mirror",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "mirror",
+    "spiritLine": [
+      "feline"
+    ]
+  },
+  "g2_mirror_tierra": {
+    "name": "Root Mirror",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "mirror",
+    "spiritLine": [
+      "feline"
+    ]
+  },
+  "g2_mirror_electrico": {
+    "name": "Volt Mirror",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "mirror",
+    "spiritLine": [
+      "feline"
+    ]
+  },
+  "g2_guardian_fuego": {
+    "name": "Ember Guardian",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "guardian",
+    "spiritLine": [
+      "ursine",
+      "megafauna"
+    ]
+  },
+  "g2_guardian_agua": {
+    "name": "Tide Guardian",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "guardian",
+    "spiritLine": [
+      "ursine",
+      "megafauna"
+    ]
+  },
+  "g2_guardian_aire": {
+    "name": "Gust Guardian",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "guardian",
+    "spiritLine": [
+      "ursine",
+      "megafauna"
+    ]
+  },
+  "g2_guardian_tierra": {
+    "name": "Root Guardian",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "guardian",
+    "spiritLine": [
+      "ursine",
+      "megafauna"
+    ]
+  },
+  "g2_guardian_electrico": {
+    "name": "Volt Guardian",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "guardian",
+    "spiritLine": [
+      "ursine",
+      "megafauna"
+    ]
+  },
+  "g2_beacon_fuego": {
+    "name": "Ember Beacon",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "beacon",
+    "spiritLine": [
+      "avian",
+      "pterosaur"
+    ]
+  },
+  "g2_beacon_agua": {
+    "name": "Tide Beacon",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "beacon",
+    "spiritLine": [
+      "avian",
+      "pterosaur"
+    ]
+  },
+  "g2_beacon_aire": {
+    "name": "Gust Beacon",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "beacon",
+    "spiritLine": [
+      "avian",
+      "pterosaur"
+    ]
+  },
+  "g2_beacon_tierra": {
+    "name": "Root Beacon",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "beacon",
+    "spiritLine": [
+      "avian",
+      "pterosaur"
+    ]
+  },
+  "g2_beacon_electrico": {
+    "name": "Volt Beacon",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "beacon",
+    "spiritLine": [
+      "avian",
+      "pterosaur"
+    ]
+  },
+  "g2_depth_fuego": {
+    "name": "Ember Depth",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "depth",
+    "spiritLine": [
+      "aquatic",
+      "marine_reptile"
+    ]
+  },
+  "g2_depth_agua": {
+    "name": "Tide Depth",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "depth",
+    "spiritLine": [
+      "aquatic",
+      "marine_reptile"
+    ]
+  },
+  "g2_depth_aire": {
+    "name": "Gust Depth",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "depth",
+    "spiritLine": [
+      "aquatic",
+      "marine_reptile"
+    ]
+  },
+  "g2_depth_tierra": {
+    "name": "Root Depth",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "depth",
+    "spiritLine": [
+      "aquatic",
+      "marine_reptile"
+    ]
+  },
+  "g2_depth_electrico": {
+    "name": "Volt Depth",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "depth",
+    "spiritLine": [
+      "aquatic",
+      "marine_reptile"
+    ]
+  },
+  "g2_crown_fuego": {
+    "name": "Ember Crown",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "crown",
+    "spiritLine": [
+      "dragon"
+    ]
+  },
+  "g2_crown_agua": {
+    "name": "Tide Crown",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "crown",
+    "spiritLine": [
+      "dragon"
+    ]
+  },
+  "g2_crown_aire": {
+    "name": "Gust Crown",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "crown",
+    "spiritLine": [
+      "dragon"
+    ]
+  },
+  "g2_crown_tierra": {
+    "name": "Root Crown",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "crown",
+    "spiritLine": [
+      "dragon"
+    ]
+  },
+  "g2_crown_electrico": {
+    "name": "Volt Crown",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "crown",
+    "spiritLine": [
+      "dragon"
+    ]
+  },
+  "g2_edge_fuego": {
+    "name": "Ember Edge",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "edge",
+    "spiritLine": [
+      "theropod",
+      "crocodilian"
+    ]
+  },
+  "g2_edge_agua": {
+    "name": "Tide Edge",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "edge",
+    "spiritLine": [
+      "theropod",
+      "crocodilian"
+    ]
+  },
+  "g2_edge_aire": {
+    "name": "Gust Edge",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "edge",
+    "spiritLine": [
+      "theropod",
+      "crocodilian"
+    ]
+  },
+  "g2_edge_tierra": {
+    "name": "Root Edge",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "edge",
+    "spiritLine": [
+      "theropod",
+      "crocodilian"
+    ]
+  },
+  "g2_edge_electrico": {
+    "name": "Volt Edge",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "edge",
+    "spiritLine": [
+      "theropod",
+      "crocodilian"
+    ]
+  },
+  "g2_bastion_fuego": {
+    "name": "Ember Bastion",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bastion",
+    "spiritLine": [
+      "chelonian",
+      "ceratopsian",
+      "stegosaur",
+      "sauropod"
+    ]
+  },
+  "g2_bastion_agua": {
+    "name": "Tide Bastion",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bastion",
+    "spiritLine": [
+      "chelonian",
+      "ceratopsian",
+      "stegosaur",
+      "sauropod"
+    ]
+  },
+  "g2_bastion_aire": {
+    "name": "Gust Bastion",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bastion",
+    "spiritLine": [
+      "chelonian",
+      "ceratopsian",
+      "stegosaur",
+      "sauropod"
+    ]
+  },
+  "g2_bastion_tierra": {
+    "name": "Root Bastion",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bastion",
+    "spiritLine": [
+      "chelonian",
+      "ceratopsian",
+      "stegosaur",
+      "sauropod"
+    ]
+  },
+  "g2_bastion_electrico": {
+    "name": "Volt Bastion",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bastion",
+    "spiritLine": [
+      "chelonian",
+      "ceratopsian",
+      "stegosaur",
+      "sauropod"
+    ]
+  },
+  "g2_road_fuego": {
+    "name": "Ember Road",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "road",
+    "spiritLine": [
+      "livestock",
+      "cervid",
+      "equine"
+    ]
+  },
+  "g2_road_agua": {
+    "name": "Tide Road",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "road",
+    "spiritLine": [
+      "livestock",
+      "cervid",
+      "equine"
+    ]
+  },
+  "g2_road_aire": {
+    "name": "Gust Road",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "road",
+    "spiritLine": [
+      "livestock",
+      "cervid",
+      "equine"
+    ]
+  },
+  "g2_road_tierra": {
+    "name": "Root Road",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "road",
+    "spiritLine": [
+      "livestock",
+      "cervid",
+      "equine"
+    ]
+  },
+  "g2_road_electrico": {
+    "name": "Volt Road",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "road",
+    "spiritLine": [
+      "livestock",
+      "cervid",
+      "equine"
+    ]
+  },
+  "g2_key_fuego": {
+    "name": "Ember Key",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "key",
+    "spiritLine": [
+      "rodent",
+      "marsupial"
+    ]
+  },
+  "g2_key_agua": {
+    "name": "Tide Key",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "key",
+    "spiritLine": [
+      "rodent",
+      "marsupial"
+    ]
+  },
+  "g2_key_aire": {
+    "name": "Gust Key",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "key",
+    "spiritLine": [
+      "rodent",
+      "marsupial"
+    ]
+  },
+  "g2_key_tierra": {
+    "name": "Root Key",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "key",
+    "spiritLine": [
+      "rodent",
+      "marsupial"
+    ]
+  },
+  "g2_key_electrico": {
+    "name": "Volt Key",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "key",
+    "spiritLine": [
+      "rodent",
+      "marsupial"
+    ]
+  },
+  "g2_forge_fuego": {
+    "name": "Ember Forge",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "forge",
+    "spiritLine": [
+      "construct",
+      "humanoid"
+    ]
+  },
+  "g2_forge_agua": {
+    "name": "Tide Forge",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "forge",
+    "spiritLine": [
+      "construct",
+      "humanoid"
+    ]
+  },
+  "g2_forge_aire": {
+    "name": "Gust Forge",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "forge",
+    "spiritLine": [
+      "construct",
+      "humanoid"
+    ]
+  },
+  "g2_forge_tierra": {
+    "name": "Root Forge",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "forge",
+    "spiritLine": [
+      "construct",
+      "humanoid"
+    ]
+  },
+  "g2_forge_electrico": {
+    "name": "Volt Forge",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "forge",
+    "spiritLine": [
+      "construct",
+      "humanoid"
+    ]
+  },
+  "g2_bloom_fuego": {
+    "name": "Ember Bloom",
+    "type": "fuego",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bloom",
+    "spiritLine": [
+      "amphibian",
+      "flora",
+      "arthropod"
+    ]
+  },
+  "g2_bloom_agua": {
+    "name": "Tide Bloom",
+    "type": "agua",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bloom",
+    "spiritLine": [
+      "amphibian",
+      "flora",
+      "arthropod"
+    ]
+  },
+  "g2_bloom_aire": {
+    "name": "Gust Bloom",
+    "type": "aire",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bloom",
+    "spiritLine": [
+      "amphibian",
+      "flora",
+      "arthropod"
+    ]
+  },
+  "g2_bloom_tierra": {
+    "name": "Root Bloom",
+    "type": "tierra",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bloom",
+    "spiritLine": [
+      "amphibian",
+      "flora",
+      "arthropod"
+    ]
+  },
+  "g2_bloom_electrico": {
+    "name": "Volt Bloom",
+    "type": "eléctrico",
+    "type2": null,
+    "species": "genesis",
+    "spirit": "bloom",
+    "spiritLine": [
+      "amphibian",
+      "flora",
+      "arthropod"
+    ]
   }
 }

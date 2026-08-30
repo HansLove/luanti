@@ -777,7 +777,13 @@ function persistent_map.show_map(player_name)
 	formspec[1] = string.format("formspec_version[%d]", persistent_map.ui.formspec_version)
 	formspec[2] = string.format("size[%.2f,%.2f]", total_width, total_height)
 	formspec[3] = "bgcolor[#000000FF;true]"
-	formspec[4] = "field_close_on_enter[false]"
+	-- field_close_on_enter needs a field name: field_close_on_enter[<name>;<bool>].
+	-- The bare "[false]" form is invalid and logs "Invalid field_close_on_enter
+	-- element(1):'false'". Declare it per text field so Enter navigates/submits
+	-- instead of closing the whole map.
+	formspec[4] = "field_close_on_enter[goto_x;false]"
+		.. "field_close_on_enter[goto_z;false]"
+		.. "field_close_on_enter[marker_name;false]"
 	formspec[5] = string.format("label[%.2f,%.2f;Discovered Map - Close with ESC]", half_total_width - persistent_map.ui.header_title_offset, padding)
 	local formspec_index = 6
 	
@@ -1312,21 +1318,17 @@ function persistent_map.show_map(player_name)
 	local goto_y = fast_row_y + side_btn * 1.5 + 0.4
 	formspec[formspec_index] = string.format("label[%.2f,%.2f;Go to:]", left_panel_x, goto_y)
 	formspec_index = formspec_index + 1
-	local goto_field_y = goto_y + 0.55
+	-- Extra gap so each field's own "X"/"Z" label (drawn just above the field)
+	-- clears the "Go to:" header instead of colliding with it.
+	local goto_field_y = goto_y + 0.75
 	local goto_field_w = (side_panel_width - persistent_map.ui.nav_center_button_offset) / persistent_map.ui.half_divisor
-	formspec[formspec_index] = string.format("label[%.2f,%.2f;X:]", left_panel_x, goto_y + 0.25)
-	formspec_index = formspec_index + 1
 	formspec[formspec_index] = string.format(
-		"field[%.2f,%.2f;%.2f,0.75;goto_x;;%d]",
+		"field[%.2f,%.2f;%.2f,0.75;goto_x;X;%d]",
 		left_panel_x, goto_field_y, goto_field_w, math.floor(pos.x)
 	)
 	formspec_index = formspec_index + 1
 	formspec[formspec_index] = string.format(
-		"label[%.2f,%.2f;Z:]", left_panel_x + goto_field_w + nav_gap, goto_y + 0.25
-	)
-	formspec_index = formspec_index + 1
-	formspec[formspec_index] = string.format(
-		"field[%.2f,%.2f;%.2f,0.75;goto_z;;%d]",
+		"field[%.2f,%.2f;%.2f,0.75;goto_z;Z;%d]",
 		left_panel_x + goto_field_w + nav_gap, goto_field_y, goto_field_w, math.floor(pos.z)
 	)
 	formspec_index = formspec_index + 1
@@ -1405,9 +1407,9 @@ function persistent_map.show_map(player_name)
 	
 	-- Left side information (2 pieces)
 	table.insert(formspec, string.format(
-		"label[%f,%f;Player Coords: X=%d Z=%d]",
+		"label[%f,%f;Player Coords: X=%d Y=%d Z=%d]",
 		left_info_x, info_y,
-		math.floor(pos.x), math.floor(pos.z)
+		math.floor(pos.x), math.floor(pos.y), math.floor(pos.z)
 	))
 	
 	table.insert(formspec, string.format(

@@ -33,6 +33,10 @@ function hashimon_bodies.apply_morphology(self, creature, morph)
 	end
 	self.hashimon_creature = creature
 	self.hashimon_morph = morph
+	if self.memorize then
+		self:memorize("hashimon_creature", creature)
+		self:memorize("hashimon_morph", morph)
+	end
 
 	local textures = self.textures or {}
 	local n = #textures
@@ -106,7 +110,14 @@ function hashimon_bodies.make_activate(body_def)
 end
 
 function hashimon_bodies.make_step(body_def)
-	return function(self)
+	return function(self, dtime)
+		if self.rider and hashimon.step_mounted then
+			hashimon.step_mounted(self, dtime)
+			if hashimon_bodies.update_anim_fsm then
+				hashimon_bodies.update_anim_fsm(self, body_def)
+			end
+			return
+		end
 		animalia.step_timers(self)
 		if animalia.head_tracking then
 			animalia.head_tracking(self)
@@ -179,8 +190,8 @@ function hashimon_bodies.register_creatura_body(body_def)
 				return
 			end
 			-- Provided by hashimon_entities when that mod is loaded (no hard dep — avoids cycle).
-			if hashimon.try_shift_blast_attack
-				and hashimon.try_shift_blast_attack(
+			if hashimon.try_owner_mount
+				and hashimon.try_owner_mount(
 					clicker,
 					self.object,
 					self.hashimon_creature,

@@ -101,7 +101,11 @@ creatura.register_mob("hashimon_entities:companion", {
 		register_owner_pet(self)
 	end,
 
-	step_func = function(self)
+	step_func = function(self, dtime)
+		if self.rider and hashimon.step_mounted then
+			hashimon.step_mounted(self, dtime)
+			return
+		end
 		animalia.step_timers(self)
 		animalia.head_tracking(self)
 	end,
@@ -120,12 +124,14 @@ creatura.register_mob("hashimon_entities:companion", {
 		if not clicker:is_player() then
 			return
 		end
-		if hashimon.try_shift_blast_attack(
-			clicker,
-			self.object,
-			self.hashimon_creature,
-			self.owner
-		) then
+		if hashimon.try_owner_mount
+			and hashimon.try_owner_mount(
+				clicker,
+				self.object,
+				self.hashimon_creature,
+				self.owner
+			)
+		then
 			return
 		end
 		hashimon.send_creature_stats(clicker:get_player_name(), self.hashimon_creature)

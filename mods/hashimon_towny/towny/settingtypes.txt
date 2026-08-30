@@ -1,0 +1,38 @@
+[Towny]
+
+# Minimum distance between homeblocks (in mapblocks).
+towny_town_distance (Min distance between homeblocks) int 8 0
+
+# If towns are open or closed when created. Anyone can join an open town.
+# Closed towns are invite only.
+# Recommended to be kept as false, to prevent griefing or spam
+towny_town_default_open (Towns open by default) bool false
+
+# Allow towns to be on top of each other, as long as the new town is far
+# enough.
+# By default a new town cannot be made over another.
+# Changing this value is suggested only before starting a new towny world.
+towny_vertical_towns (Vertical towns) bool false
+
+# How often towny should autosave, in seconds. Towny won't save if there were
+# no changes. Set to 30 seconds by default.
+towny_autosave_interval (Autosave interval) int 30 1
+
+# Change the townblock size. Townblocks are 16x16x16 by default. Changing
+# this value is suggested only before you load your world with towny.
+towny_town_block_size (Townblock size) int 16 1
+
+# Refresh delay for the name displays in the HUD in seconds
+towny_tick (HUD update delay) float 0.5 0 100
+
+# Maximum townblocks a town can have.
+towny_max_townblocks (Maximum townblocks per town) int 64 1
+
+# Maximum townblocks a town can have,
+# for mayors with the privilege `towny_blocks_high_limit`
+towny_max_townblocks_high (Maximum townblocks per town, high limit) int 1024 1
+
+# Maximum outposts a town can have. Outposts are claimblocks that don't have
+# to border the town. Players with the `towny_blocks_no_limit` priv can have
+# unlimited outposts.
+towny_max_outposts (Maximum outposts per town) int 1 1

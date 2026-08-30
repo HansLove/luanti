@@ -85,9 +85,9 @@ core.register_entity("hashimon_entities:voxel_root", {
 		self.object:set_acceleration({ x = 0, y = GRAVITY, z = 0 })
 	end,
 
-	on_step = function(self, _dtime)
+	on_step = function(self, dtime)
 		if self.rider then
-			hashimon.step_mounted(self)
+			hashimon.step_mounted(self, dtime)
 			return
 		end
 
@@ -105,27 +105,12 @@ core.register_entity("hashimon_entities:voxel_root", {
 		if not clicker or not clicker:is_player() then
 			return
 		end
-		local clicker_name = clicker:get_player_name()
-
-		-- Already riding this one? Right-click again dismounts.
-		if self.rider == clicker_name then
-			hashimon.dismount(clicker)
+		if hashimon.try_owner_mount
+			and hashimon.try_owner_mount(clicker, self.object, self.creature, self.owner)
+		then
 			return
 		end
-
-		if hashimon.try_shift_blast_attack and
-			hashimon.try_shift_blast_attack(clicker, self.object, self.creature, self.owner) then
-			return
-		end
-
-		-- Only the owner may ride their own Hashimon, once it's grown enough.
-		if self.rideable and not self.rider and clicker_name == self.owner then
-			if hashimon.mount(clicker, self.object) then
-				return
-			end
-		end
-
-		hashimon.send_creature_stats(clicker_name, self.creature)
+		hashimon.send_creature_stats(clicker:get_player_name(), self.creature)
 	end,
 })
 
@@ -259,12 +244,6 @@ end
 -- ---------------------------------------------------------------------------
 -- Public entry point
 -- ---------------------------------------------------------------------------
-
---- A creature that has never mined a share is still an egg. Once it has
---- (stage/tier >= 1), it has hatched and shows its full form.
-function hashimon.creature_stage(creature)
-	return (creature and (creature.stage or creature.tier)) or 0
-end
 
 function hashimon.is_egg_stage(creature)
 	return hashimon.creature_stage(creature) < 1
