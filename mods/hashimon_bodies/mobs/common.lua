@@ -178,7 +178,7 @@ function hashimon_bodies.register_creatura_body(body_def)
 
 		utility_stack = {
 			animalia.mob_ai.tamed_stay,
-			animalia.mob_ai.tamed_follow_owner,
+			hashimon_bodies.mob_ai_follow_owner,
 		},
 
 		activate_func = hashimon_bodies.make_activate(body_def),

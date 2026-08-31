@@ -13,6 +13,7 @@ local modpath = core.get_modpath("hashimon_bodies")
 dofile(modpath .. "/anim_fsm.lua")
 dofile(modpath .. "/attachments.lua")
 dofile(modpath .. "/proportions.lua")
+dofile(modpath .. "/follow.lua")
 dofile(modpath .. "/mobs/common.lua")
 dofile(modpath .. "/spawn.lua")
 

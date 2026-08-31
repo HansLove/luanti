@@ -75,7 +75,8 @@ creatura.register_mob("hashimon_entities:companion", {
 
 	utility_stack = {
 		animalia.mob_ai.tamed_stay,
-		animalia.mob_ai.tamed_follow_owner,
+		(hashimon_bodies and hashimon_bodies.mob_ai_follow_owner)
+			or animalia.mob_ai.tamed_follow_owner,
 	},
 
 	activate_func = function(self)

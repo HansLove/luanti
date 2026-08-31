@@ -37,6 +37,10 @@
 -- cubre congela la criatura en su última pose — por eso el exportador valida
 -- que el último frame declarado exista de verdad.
 
+-- ORIENTACIÓN. Independiente del protocolo de frames pero igual de fácil de
+-- olvidar: el modelo debe salir de glb_for_luanti.py con `--yaw 180`, o la
+-- criatura camina de espaldas por muy bien animada que esté.
+
 hashimon_bodies = hashimon_bodies or {}
 
 hashimon_bodies.ANIM_START = {

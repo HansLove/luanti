@@ -42,8 +42,8 @@ core.register_entity("hashimon_entities:voxel_part", {
 	},
 })
 
--- Follow-owner movement (hashimon.step_follow_owner, entities.lua) matches
--- the tamed_follow_owner feel the old wolf companion had. Rolled by hand
+-- Follow-owner movement (hashimon.step_follow_owner, entities.lua) keeps
+-- personal space with hysteresis so pets approach but do not glue to feet.
 -- instead of depending on Creatura's mob framework because that framework
 -- assumes one mesh-based mob entity; ours is a rigid composite (root +
 -- attached cubes), and attaching already makes every child move with the
