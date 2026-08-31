@@ -18,6 +18,12 @@
 --   * El .glb pasa SIEMPRE por scripts/glb_for_luanti.py antes de entrar aquí:
 --     corrige los tiempos, deja una sola textura (el base color) y borra las
 --     imágenes embebidas, que Luanti no soporta y pesaban 6.9 MB de los 7.0.
+--   * `--yaw 180` es OBLIGATORIO. Blender exporta mirando a su -Y, que es el
+--     "frente" estándar de Blender y en glTF cae en +Z; Luanti espera lo
+--     contrario, así que sin la rotación la criatura camina de espaldas. Se
+--     detectó en el dragón y en el osezno por separado antes de dar con la
+--     causa. La herramienta lo aplica envolviendo la escena en un nodo rotado,
+--     no tocando vértices, para que el esqueleto gire con la malla.
 
 -- ---------------------------------------------------------------------------
 -- DRAGON — cría propia. Es el tier 1 que a la línea Crown le faltaba:
@@ -62,5 +68,31 @@ hashimon_bodies.register_creatura_body({
 	-- Altura real de la malla en el .glb, medida sobre el accessor POSITION.
 	-- Con esto morphology.lua deriva visual_size_base solo; no se declara.
 	mesh_height = 3.62,
+	makes_footstep_sound = true,
+})
+
+-- ---------------------------------------------------------------------------
+-- URSINE — osezno propio. El tier 1 que a la línea Guardian le faltaba: antes,
+-- su cuerpo más bajo era un oso ADULTO de 1.00 nodos, así que un jugador de
+-- stage 1 empezaba ya con la forma final de su especie.
+--
+-- Los huesos venían del auto-rig con nombres genéricos (Bone, Bone.001...) y se
+-- renombraron con `glb_for_luanti.py --rename`. El mapeo salió de la jerarquía,
+-- no de adivinar: Head es el hueso más alto y adelantado, Torso el que ramifica
+-- en las dos patas traseras, y cada cadena descendente es un miembro. Cuál pata
+-- es izquierda y cuál derecha da igual: proportions.lua aplica el mismo
+-- multiplicador a las cuatro.
+-- ---------------------------------------------------------------------------
+hashimon_bodies.register_creatura_body({
+	id = "ursine_cub",
+	family = "ursine",
+	mesh = "hashimon_bear_cub.glb",
+	textures = { "hashimon_bear_cub.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 20 }),
+	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
+	hitbox = { width = 0.30, height = 0.50 },
+	mesh_height = 4.98,
 	makes_footstep_sound = true,
 })

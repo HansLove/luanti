@@ -50,39 +50,91 @@ local player_entities = {}
 local player_spawn_center = {}
 
 -- Follow-owner movement shared by every roster entity (sprite/mesh fallback
--- here, procedural voxel body in voxel_body.lua). Straight-line steering
--- toward the owner, matching the old wolf companion's feel.
-local FOLLOW_STOP_DISTANCE = 3 -- nodes; stop this close to the owner
+-- here, procedural voxel body in voxel_body.lua). Approach with personal space
+-- so pets do not glue to the player's feet.
+hashimon.FOLLOW_COMFORT = 5.5 -- nodes; stop when this close (XZ)
+hashimon.FOLLOW_RESUME = 7.5 -- nodes; only resume when farther (hysteresis)
 local FOLLOW_SPEED = 3.5 -- nodes/sec
 local GRAVITY = -9.81
 
+--- Comfort stop distance, padded for large collisionboxes.
+function hashimon.follow_comfort_for(obj)
+	local comfort = hashimon.FOLLOW_COMFORT or 5.5
+	if not obj or not obj.get_properties then
+		return comfort
+	end
+	local props = obj:get_properties()
+	local box = props and props.collisionbox
+	if box and #box >= 6 then
+		local half_w = math.max(
+			math.abs(box[1]), math.abs(box[4]),
+			math.abs(box[3]), math.abs(box[6])
+		)
+		comfort = math.max(comfort, half_w + 2)
+	end
+	return comfort
+end
+
+function hashimon.follow_resume_for(obj)
+	local comfort = hashimon.follow_comfort_for(obj)
+	local resume = hashimon.FOLLOW_RESUME or 7.5
+	if resume < comfort + 1.5 then
+		resume = comfort + 1.5
+	end
+	return resume, comfort
+end
+
 function hashimon.step_follow_owner(self)
-	if not self.owner then
+	if not self.owner or self.rider then
 		return
 	end
 	local owner_obj = core.get_player_by_name(self.owner)
 	local vel = self.object:get_velocity()
 	if not owner_obj or not owner_obj:is_player() then
 		self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
+		self._follow_active = false
 		return
 	end
 
 	local mypos = self.object:get_pos()
 	local ownerpos = owner_obj:get_pos()
+	if not mypos or not ownerpos then
+		return
+	end
 	local dx = ownerpos.x - mypos.x
 	local dz = ownerpos.z - mypos.z
 	local dist = math.sqrt(dx * dx + dz * dz)
 
-	if dist > FOLLOW_STOP_DISTANCE then
-		local speed = math.min(FOLLOW_SPEED, dist * 0.6)
-		self.object:set_velocity({
-			x = (dx / dist) * speed,
-			y = vel.y,
-			z = (dz / dist) * speed,
-		})
+	local resume, comfort = hashimon.follow_resume_for(self.object)
+
+	if self._follow_active then
+		if dist <= comfort then
+			self._follow_active = false
+			self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
+			return
+		end
 	else
-		self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
+		if dist <= resume then
+			self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
+			return
+		end
+		self._follow_active = true
 	end
+
+	if dist < 0.05 then
+		self.object:set_velocity({ x = 0, y = vel.y, z = 0 })
+		return
+	end
+	local gap = dist - comfort
+	if gap < 0.15 then
+		gap = 0.15
+	end
+	local speed = math.min(FOLLOW_SPEED, gap * 0.7)
+	self.object:set_velocity({
+		x = (dx / dist) * speed,
+		y = vel.y,
+		z = (dz / dist) * speed,
+	})
 end
 
 function hashimon.type_for_creature(creature)
