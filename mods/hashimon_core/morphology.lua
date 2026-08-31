@@ -116,6 +116,10 @@ local function size_tier(body)
 	return 3
 end
 
+-- Stage en el que una criatura alcanza su cuerpo destino. Antes de esto va
+-- recorriendo su línea; después, ya no cambia de forma y sólo escala.
+local EVOLUTION_END_STAGE = 20
+
 --- Largest size tier a creature may wear at this stage.
 function hashimon.max_size_tier(stage)
 	stage = stage or 1
@@ -134,6 +138,16 @@ function hashimon.bodies_in_family(family, max_tier)
 	end
 	table.sort(out) -- deterministic: pairs() order is not stable across runs
 	return out
+end
+
+--- Índice 1..n derivado de un nibble, sin necesidad de una lista.
+local function dna_index(dna, position, length, n)
+	local span = 16 ^ length
+	local w = tonumber(dna:sub(position, position + length - 1), 16) or 0
+	local i = math.floor((w / span) * n) + 1
+	if i > n then i = n end
+	if i < 1 then i = 1 end
+	return i
 end
 
 local function dna_pick(dna, position, length, list)
@@ -328,21 +342,37 @@ local function pick_body_id(creature, dna, element_type, generation, stage)
 		return nil
 	end
 
-	-- [59]: destiny body within the family. Also fixed for life.
-	local destiny = dna_pick(dna, 59, 1, line)
+	-- [59]: el DESTINO dentro de la línea. Fijo de por vida.
+	-- Desde el índice 2: el cuerpo más pequeño de una línea es por dónde se
+	-- EMPIEZA, nunca dónde se acaba. Sin esto, una cuarta parte de los
+	-- jugadores nacía ya en su forma final y no cambiaba nunca.
+	local destiny_idx = (#line >= 2) and (1 + dna_index(dna, 59, 1, #line - 1))
+		or 1
+
+	-- Y ahora se CAMINA hacia él en vez de saltar.
+	--
+	-- La versión anterior vestía el destino en cuanto el tier de tamaño lo
+	-- permitía. Para más de la mitad de las criaturas lo permitía desde el
+	-- stage 1 —toda la línea de Hearth y de Mirror es tier 1—, así que su
+	-- forma no cambiaba jamás: el mismo cuerpo escalado del stage 1 al 30.
+	-- Medido antes del arreglo: 53% de las criaturas estáticas, y el 100% de
+	-- Hearth y Mirror.
+	--
+	-- El tier deja de ser el motor del progreso y pasa a ser sólo un techo: un
+	-- jugador bajo no puede cargar una malla enorme aunque su marcha ya llegue
+	-- ahí.
+	local progress = math.min(1, (stage - 1) / (EVOLUTION_END_STAGE - 1))
+	local idx = 1 + math.floor(progress * (destiny_idx - 1) + 0.5)
+
+	-- Techo por tamaño. Bajar de índice aquí no rompe la monotonía: max_tier
+	-- sólo crece con el stage, así que el recorte se afloja y una criatura
+	-- nunca retrocede de cuerpo.
 	local max_tier = hashimon.max_size_tier(stage)
-	if size_tier(hashimon.get_body(destiny)) <= max_tier then
-		return destiny
+	while idx > 1 and size_tier(hashimon.get_body(line[idx])) > max_tier do
+		idx = idx - 1
 	end
 
-	-- Too big for now: wear the largest body of this family that is allowed.
-	local worn = line[1]
-	for _, id in ipairs(line) do
-		if size_tier(hashimon.get_body(id)) <= max_tier then
-			worn = id
-		end
-	end
-	return worn
+	return line[idx]
 end
 
 -- Per-part proportions, as ABSTRACT multipliers. Core never names a bone: it
