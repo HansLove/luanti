@@ -499,12 +499,18 @@ end
 -- register_on_mods_loaded
 local townyfunc = function()
 	for itemname, itemdef in pairs(core.registered_items) do
-	for gname, _ in pairs(itemdef.groups) do
-		if string.find(gname, "^food") then
-			goto item_continue
+	local skip_food = false
+	if itemdef.groups then
+		for gname, _ in pairs(itemdef.groups) do
+			if string.find(gname, "^food") then
+				skip_food = true
+				break
+			end
 		end
 	end
-
+	if skip_food then
+		-- food items are exempt from towny placement hooks
+	else
 	local old_on_place = itemdef.on_place
 	local old_on_dig = itemdef.on_dig
 	local old_on_rightclick = itemdef.on_rightclick
@@ -741,16 +747,13 @@ local townyfunc = function()
 
 	core.override_item(itemname, override)
 
-	::item_continue::
+	end -- not skip_food
 	end
 
 	-- entities only take damage in pvp blocks, or if the puncher has access to
 	-- the block
 	for entityname, entitydef in pairs(core.registered_entities) do
-		if entityname == "__builtin:item" then
-			goto entity_continue
-		end
-
+		if entityname ~= "__builtin:item" then
 		local old_on_punch = entitydef.on_punch
 
 		if old_on_punch then
@@ -771,7 +774,7 @@ local townyfunc = function()
 			end
 		end
 
-		::entity_continue::
+		end -- entityname ~= __builtin:item
 	end
 
 	local abms = core.registered_abms
