@@ -109,6 +109,11 @@ R({
 R({
 	id = "chelonian_tortoise",
 	family = "chelonian",
+	-- Fuera de las líneas Genesis: no tiene animación `stand` (se congela en pose
+	-- de bind) y su `run` y `walk` apuntan al mismo rango, así que tampoco
+	-- distingue quieta de andando. La cría propia de Bastion la sustituye.
+	-- Sigue registrada y alcanzable por nacimiento salvaje.
+	natural_only = true,
 	mesh = "tortoise.b3d",
 	textures = { "dmobs_tortoise.png", "mobs_blood.png", "default_grass.png" },
 	visual_size_base = 1.0,

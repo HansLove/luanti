@@ -91,7 +91,7 @@ local G0_FAMILY_POOLS = {
 local ARCHETYPE_FAMILY_POOLS = {
 	canine = { "canine" },
 	feline = { "feline" },
-	ursine = { "ursine", "megafauna" },
+	ursine = { "ursine", "megafauna", "livestock" },
 	avian = { "avian", "pterosaur" },
 	aquatic = { "aquatic", "marine_reptile" },
 	reptilian = { "theropod", "crocodilian", "ceratopsian", "stegosaur", "chelonian" },
@@ -104,7 +104,10 @@ local ARCHETYPE_FAMILY_POOLS = {
 	fungal = { "flora", "amphibian" },
 	crystalline = { "dragon", "construct", "ceratopsian" },
 	amorphous = { "aquatic", "amphibian" },
-	hybrid = { "canine", "feline", "avian", "marsupial" },
+	-- rodent y livestock sólo vivían en las líneas Genesis de Key y Road. Al
+	-- podarlas de ahí quedarían inalcanzables, no "sólo naturales", así que
+	-- entran aquí para conservar la promesa del grafo.
+	hybrid = { "canine", "feline", "avian", "marsupial", "rodent" },
 }
 
 -- Size tiers keep a stage-1 player off a five-node sauropod. Derived from the
@@ -129,10 +132,17 @@ function hashimon.max_size_tier(stage)
 end
 
 --- Registered bodies belonging to a family, no larger than max_tier.
-function hashimon.bodies_in_family(family, max_tier)
+---
+--- `genesis_only` descarta los marcados `natural_only`: cuerpos que siguen
+--- registrados y alcanzables por nacimiento salvaje, pero que no pueden ser
+--- escalón de una línea Genesis. Es lo que permite retirar una malla concreta
+--- —una tortuga sin animación `stand`, por ejemplo— sin borrarla del juego ni
+--- sacar a su familia entera.
+function hashimon.bodies_in_family(family, max_tier, genesis_only)
 	local out = {}
 	for id, body in pairs(hashimon._body_registry) do
-		if body.family == family and size_tier(body) <= (max_tier or 3) then
+		if body.family == family and size_tier(body) <= (max_tier or 3)
+			and not (genesis_only and body.natural_only) then
 			out[#out + 1] = id
 		end
 	end
@@ -220,10 +230,10 @@ end
 --- Families from a list that actually have at least one registered body.
 --- Deliberately NOT filtered by size tier: which family a creature belongs to
 --- must not change as it grows.
-local function available_families(families)
+local function available_families(families, genesis_only)
 	local out = {}
 	for _, family in ipairs(families or {}) do
-		if #hashimon.bodies_in_family(family, 3) > 0 then
+		if #hashimon.bodies_in_family(family, 3, genesis_only) > 0 then
 			out[#out + 1] = family
 		end
 	end
@@ -241,13 +251,38 @@ end
 --- Crossing families inside a line is NOT the incoherence bug that produced
 --- parrotfish -> whale -> frog. What is fixed for life is the SPIRIT, and no
 --- line mixes silhouettes that would let a fish end up a theropod.
-local function evolution_line(families)
-	local ids = {}
+--- Normaliza la ortografía del elemento (el acento de "eléctrico" viaja mal).
+local function norm_element(e)
+	if e == "eléctrico" then return "electrico" end
+	return e
+end
+
+local function evolution_line(families, genesis_only, element)
+	element = norm_element(element)
+	local ids, replaced = {}, {}
+
 	for _, family in ipairs(families) do
-		for _, id in ipairs(hashimon.bodies_in_family(family, 3)) do
-			ids[#ids + 1] = id
+		for _, id in ipairs(hashimon.bodies_in_family(family, 3, genesis_only)) do
+			local body = hashimon.get_body(id)
+			-- CAPA V2: un cuerpo puede declararse propio de un elemento. Sólo lo
+			-- viste una criatura de ese elemento; para las demás no existe.
+			-- Sin `element`, el cuerpo es universal, que es el caso de todos los
+			-- que había antes de esto.
+			if not body.element or norm_element(body.element) == element then
+				ids[#ids + 1] = id
+				-- Y puede SUSTITUIR al cuerpo genérico de su mismo peldaño, en
+				-- vez de sumarse. Sin esto, un Guardian de aire tendría el oso
+				-- normal y el oso de aire compitiendo por el mismo destino.
+				if body.replaces then replaced[body.replaces] = true end
+			end
 		end
 	end
+
+	local out = {}
+	for _, id in ipairs(ids) do
+		if not replaced[id] then out[#out + 1] = id end
+	end
+	ids = out
 	table.sort(ids, function(a, b)
 		local ha = hashimon.get_body(a).hitbox.height
 		local hb = hashimon.get_body(b).hitbox.height
@@ -273,7 +308,7 @@ local function spirit_line_families(spirit_key)
 	local seen = {}
 	while spirit and not seen[spirit.key] do
 		seen[spirit.key] = true
-		local fams = available_families(spirit.line)
+		local fams = available_families(spirit.line, true)
 		if #fams > 0 then
 			return fams
 		end
@@ -337,7 +372,8 @@ local function pick_body_id(creature, dna, element_type, generation, stage)
 
 	-- A Genesis V2 walks its whole spirit line. Every other birth still picks a
 	-- single family with nibble [8], and that family is fixed for life.
-	local line = evolution_line(spirit and families or { dna_pick(dna, 8, 1, families) })
+	local line = evolution_line(spirit and families or { dna_pick(dna, 8, 1, families) },
+		spirit ~= nil, element_type)
 	if #line == 0 then
 		return nil
 	end

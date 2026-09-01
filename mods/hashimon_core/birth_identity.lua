@@ -102,16 +102,24 @@ hashimon.SPIRITS = {
 	-- PROVISIONAL
 	{ key = "road", name = "Road", name_es = "Camino",
 	  archetype = "viaje, constancia, libertad",
-	  line = { "livestock", "cervid", "equine" }, kin = nil },
+	  -- Podado 2026-08-31: livestock sale a Natural. Es la línea que producía la
+	  -- oveja gigante de diez estrellas.
+	  line = { "equine", "cervid" }, kin = nil },
 	{ key = "key", name = "Key", name_es = "Llave",
 	  archetype = "ingenio, oportunidad, supervivencia",
-	  line = { "rodent", "marsupial" }, kin = nil },
+	  -- Podado 2026-08-31: rodent y marsupial salen a Natural. `serpentine` es
+	  -- familia propia — ningún mod instalado tiene topología serpentina.
+	  line = { "serpentine" }, kin = "wyrm" },
 	{ key = "forge", name = "Forge", name_es = "Fragua",
 	  archetype = "creación, voluntad, transformación",
-	  line = { "construct", "humanoid" }, kin = "hearth" },
+	  -- `ape` es familia propia: un simio no es ni constructo ni humanoide, y
+	  -- ningún mod instalado tiene uno. Va primera porque es el linaje curado.
+	  line = { "ape", "construct", "humanoid" }, kin = "hearth" },
 	{ key = "bloom", name = "Bloom", name_es = "Brote",
 	  archetype = "cambio, renovación, crecimiento",
-	  line = { "amphibian", "flora", "arthropod" }, kin = nil },
+	  -- Podado 2026-08-31: amphibian sale a Natural; la rana le ganaba el stage 1
+	  -- a la mantis cría por 5 centésimas de nodo.
+	  line = { "arthropod", "flora" }, kin = nil },
 }
 
 local SPIRIT_BY_KEY = {}

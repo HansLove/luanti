@@ -115,8 +115,8 @@ local function town_membership()
 	return mayor, members
 end
 
--- Project towny.town_array into the API payload. Blocks are deduped to a top-down
--- (x,z) grid; a town claiming above/below at the same column counts once on the map.
+-- Project towny.town_array into the API payload. Blocks are the claimed mapblocks
+-- as {x,y,z} (3D): a sky-island claim and the ground below it stay distinct.
 local function towns_payload()
 	local mayor, members = town_membership()
 	local towns = {}
@@ -126,10 +126,10 @@ local function towns_payload()
 			for i = 1, #town do
 				local bp = town[i] and town[i].blockpos
 				if bp then
-					local key = bp.x .. ":" .. bp.z
+					local key = bp.x .. ":" .. bp.y .. ":" .. bp.z
 					if not seen[key] then
 						seen[key] = true
-						blocks[#blocks + 1] = { bp.x, bp.z }
+						blocks[#blocks + 1] = { bp.x, bp.y, bp.z }
 					end
 				end
 			end
@@ -139,7 +139,7 @@ local function towns_payload()
 				blockCount  = #town,
 				memberCount = members[town] or 0,
 				mayor       = mayor[town] or nil,
-				home        = home and { home.x, home.z } or nil,
+				home        = home and { home.x, home.y, home.z } or nil,
 				blocks      = blocks,
 			}
 		end
@@ -152,7 +152,7 @@ end
 local function towns_signature(towns)
 	local parts = {}
 	for _, t in ipairs(towns) do
-		local h = t.home and (t.home[1] .. "," .. t.home[2]) or "-"
+		local h = t.home and (t.home[1] .. "," .. t.home[2] .. "," .. t.home[3]) or "-"
 		parts[#parts + 1] = t.name .. "#" .. t.blockCount .. "#" .. h
 	end
 	table.sort(parts)

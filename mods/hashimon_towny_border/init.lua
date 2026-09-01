@@ -21,8 +21,10 @@ local bs = (towny.settings and towny.settings.town_block_size) or 16
 ------------------------------------------------------------------------
 local REFRESH        = 2.0        -- seconds between in-world wall refreshes
 local VIEW_RADIUS    = 72         -- only draw perimeter faces within this range of the player
-local WALL_COLOR     = "#5FE0FFCC"-- translucent cyan (RRGGBBAA)
+local WALL_COLOR     = "#5FE0FFCC"-- translucent cyan (RRGGBBAA) — YOUR town
 local WALL_TEXTURE   = "[fill:8x8:" .. WALL_COLOR   -- procedural, no PNG needed
+local ENEMY_COLOR    = "#FF5A5ACC"-- translucent red — every OTHER town's frontier
+local ENEMY_TEXTURE  = "[fill:8x8:" .. ENEMY_COLOR
 local WALL_AMOUNT    = 60         -- particles per face per refresh
 local WALL_GLOW      = 13         -- visible at night (0..14)
 local WALL_SIZE_MIN  = 1.4
@@ -52,7 +54,7 @@ local function has_town_neighbor(block, town, dx, dy, dz)
 end
 
 -- Emit a flat particle "wall" over one 16x16 face of a claim block, for one player.
-local function draw_wall(name, minp, maxp)
+local function draw_wall(name, minp, maxp, texture)
 	core.add_particlespawner({
 		amount     = WALL_AMOUNT,
 		time       = REFRESH + 0.5,           -- auto-expires just after the next refresh
@@ -64,38 +66,39 @@ local function draw_wall(name, minp, maxp)
 		maxexptime = REFRESH + 0.5,
 		minsize    = WALL_SIZE_MIN,
 		maxsize    = WALL_SIZE_MAX,
-		texture    = WALL_TEXTURE,
+		texture    = texture or WALL_TEXTURE,
 		glow       = WALL_GLOW,
 		playername = name,                    -- only this player sees their border
 	})
 end
 
--- Draw the four vertical side faces of a block that border wilderness / another town.
-local function draw_block_perimeter(name, block, town)
+-- Draw the four vertical side faces of a block that border wilderness / another
+-- town. `texture` colours the wall (cyan = own, red = enemy).
+local function draw_block_perimeter(name, block, town, texture)
 	local p = block.pos_min
 	-- +X face (east)
 	if not has_town_neighbor(block, town, 1, 0, 0) then
 		draw_wall(name,
 			vector.new(p.x + bs, p.y, p.z),
-			vector.new(p.x + bs, p.y + bs, p.z + bs))
+			vector.new(p.x + bs, p.y + bs, p.z + bs), texture)
 	end
 	-- -X face (west)
 	if not has_town_neighbor(block, town, -1, 0, 0) then
 		draw_wall(name,
 			vector.new(p.x, p.y, p.z),
-			vector.new(p.x, p.y + bs, p.z + bs))
+			vector.new(p.x, p.y + bs, p.z + bs), texture)
 	end
 	-- +Z face (north)
 	if not has_town_neighbor(block, town, 0, 0, 1) then
 		draw_wall(name,
 			vector.new(p.x, p.y, p.z + bs),
-			vector.new(p.x + bs, p.y + bs, p.z + bs))
+			vector.new(p.x + bs, p.y + bs, p.z + bs), texture)
 	end
 	-- -Z face (south)
 	if not has_town_neighbor(block, town, 0, 0, -1) then
 		draw_wall(name,
 			vector.new(p.x, p.y, p.z),
-			vector.new(p.x + bs, p.y + bs, p.z))
+			vector.new(p.x + bs, p.y + bs, p.z), texture)
 	end
 end
 
@@ -130,7 +133,7 @@ end
 ------------------------------------------------------------------------
 core.register_chatcommand("border", {
 	params = "[on | off]",
-	description = "Show/hide glowing walls along your town's claimed boundary.",
+	description = "Show/hide glowing boundary walls: cyan = your town, red = neighbouring towns' frontiers.",
 	privs = { towny = true },
 	func = function(name, param)
 		param = (param or ""):gsub("%s+", ""):lower()
@@ -147,11 +150,10 @@ core.register_chatcommand("border", {
 		end
 
 		local res = towny.residents[name]
-		if not res or not res.town then
-			show[name] = nil
-			return false, "You are not in a town, so there is no boundary to show."
+		if res and res.town then
+			return true, "Border walls ON — cyan is your town's limit, red is every neighbouring town's frontier. /border off to hide."
 		end
-		return true, "Border walls ON — the glowing edges are your town's claimed limit. Type /border off to hide."
+		return true, "Border walls ON — red walls mark every nearby town's frontier. /border off to hide."
 	end,
 })
 
@@ -169,10 +171,16 @@ core.register_globalstep(function(dtime)
 		for _, player in ipairs(core.get_connected_players()) do
 			local name = player:get_player_name()
 			if show[name] then
+				local ppos = player:get_pos()
 				local res = towny.residents[name]
-				local town = res and res.town
-				if town then
-					local ppos = player:get_pos()
+				local own = res and res.town
+				-- Draw EVERY town near the player: own in cyan, every other
+				-- town's frontier in red - so you see the enemy border you
+				-- are contesting, not just your own.
+				local ta = towny.town_array or {}
+				for ti = 1, #ta do
+					local town = ta[ti]
+					local tex = (town == own) and WALL_TEXTURE or ENEMY_TEXTURE
 					for i = 1, #town do
 						local block = town[i]
 						if block.pos_min then
@@ -182,7 +190,7 @@ core.register_globalstep(function(dtime)
 								block.pos_min.z + bs * 0.5
 							)
 							if vector.distance(ppos, c) <= VIEW_RADIUS then
-								draw_block_perimeter(name, block, town)
+								draw_block_perimeter(name, block, town, tex)
 							end
 						end
 					end

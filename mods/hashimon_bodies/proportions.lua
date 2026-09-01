@@ -15,7 +15,11 @@ hashimon_bodies = hashimon_bodies or {}
 
 --- Every limb bone a skeleton might expose. Missing ones are skipped, so a
 --- two-legged bird and a four-legged wolf share one declaration shape.
-local LIMB_KEYS = { "arm_l", "arm_r", "leg_l", "leg_r", "wing_l", "wing_r" }
+-- Extremidades que reciben el multiplicador `limbLength`. Añadir una clave es
+-- seguro: scale_bone() ignora las que un cuerpo no declare.
+-- `limb_m_*` es el par medio de los hexápodos (docs/SKELETON_STANDARD_V1.md §1.3).
+local LIMB_KEYS = { "arm_l", "arm_r", "leg_l", "leg_r", "wing_l", "wing_r",
+	"limb_m_l", "limb_m_r", "fin_l", "fin_r", "fin_t" }
 
 --- A scale is "no change" if all three axes sit this close to 1.0.
 local NEUTRAL = 0.001

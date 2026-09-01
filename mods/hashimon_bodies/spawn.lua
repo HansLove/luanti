@@ -97,7 +97,33 @@ local function find_dna_for(body_id, stage, tries)
 			"%s mide %.2f nodos y no se desbloquea hasta el stage %d. Prueba: /hbody %s %d",
 			body_id, h, need, body_id, need)
 	end
-	return nil, nil, "no salió tras 4000 intentos; puede que su nibble de destino sea muy raro"
+	-- El otro motivo, y el menos evidente: la criatura CAMINA su línea según el
+	-- stage, así que un cuerpo tardío no es alcanzable en un stage temprano
+	-- aunque su tier sí lo permita. Se calcula el stage mínimo real.
+	local line, pos = nil, nil
+	for _, sp in ipairs(hashimon.SPIRITS or {}) do
+		local l = {}
+		for _, f in ipairs(sp.line) do
+			for _, bid in ipairs(hashimon.bodies_in_family(f, 3)) do l[#l + 1] = bid end
+		end
+		table.sort(l, function(a, b)
+			local ha, hb = hashimon.get_body(a).hitbox.height, hashimon.get_body(b).hitbox.height
+			if ha == hb then return a < b end
+			return ha < hb
+		end)
+		for i, bid in ipairs(l) do
+			if bid == body_id then line, pos = l, i end
+		end
+	end
+	if line and pos and pos > 1 then
+		local need_walk = math.ceil(1 + 19 * (pos - 1.5) / (#line - 1))
+		if stage < need_walk then
+			return nil, nil, string.format(
+				"%s es el cuerpo %d de %d en su línea; no se alcanza hasta el stage %d. Prueba: /hbody %s %d",
+				body_id, pos, #line, need_walk, body_id, need_walk)
+		end
+	end
+	return nil, nil, "no salió tras 4000 intentos; revisa el log del servidor"
 end
 
 core.register_chatcommand("hbody", {
