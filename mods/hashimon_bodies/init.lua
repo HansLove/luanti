@@ -54,6 +54,8 @@ hashimon_bodies.register_creatura_body({
 	id = "avian_bat",
 	bones = { head = "Head", torso = "Torso", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "avian",
+	-- Grafo V1: piel alternativa de Beacon A — no escalón Genesis.
+	natural_only = true,
 	mesh = "animalia_bat.b3d",
 	-- All three bat skins are dark and near-flat (sd<0.07, max lum<0.4).
 	contrast = { 90, 40 },
@@ -239,6 +241,8 @@ hashimon_bodies.register_creatura_body({
 	id = "avian_owl",
 	bones = { head = "Head", torso = "Torso", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "avian",
+	-- Grafo V1: piel alternativa de Beacon A — no escalón Genesis.
+	natural_only = true,
 	mesh = "animalia_owl.b3d",
 	-- Only skin shipped, low contrast (sd 0.069) though not dark.
 	contrast = { 80, 10 },

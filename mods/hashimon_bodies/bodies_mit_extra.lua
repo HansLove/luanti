@@ -81,6 +81,8 @@ R({
 		head = "Head", torso = "Torso", tail = "Tail",
 		leg_l = "Leg.L", leg_r = "Leg.R", wing_l = "Wing.L", wing_r = "Wing.R" },
 	family = "avian",
+	-- Grafo V1 §6: sale a Natural — no escalón Genesis (evita pollo a 11★ Beacon).
+	natural_only = true,
 	mesh = "animalia_chicken.b3d",
 	textures = { "animalia_chicken_1.png", "animalia_chicken_2.png", "animalia_chicken_3.png", "animalia_rooster_1.png", "animalia_rooster_2.png", "animalia_rooster_3.png" },
 	visual_size_base = 10.0,
@@ -97,6 +99,8 @@ R({
 	id = "avian_turkey",
 	bones = { head = "Head", neck = "Neck", torso = "Torso" },
 	family = "avian",
+	-- Grafo V1 §6: sale a Natural — no escalón Genesis.
+	natural_only = true,
 	mesh = "animalia_turkey.b3d",
 	textures = { "animalia_turkey_hen.png", "animalia_turkey_tom.png", "animalia_turkey_chick.png" },
 	visual_size_base = 10.0,

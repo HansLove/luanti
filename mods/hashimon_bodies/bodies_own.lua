@@ -131,8 +131,8 @@ hashimon_bodies.register_creatura_body({
 -- EQUINE — adulto propio. Etapa B del linaje Road.
 --
 -- Sustituye al caballo MIT (`equine_horse`) en el peldaño desarrollado.
--- GLB: adult-road.blend → glb_for_luanti.py --yaw 180 --rename Torax=Torso
--- --expect-frames 70. Socket.Mount hijo de Torso (tras el rename).
+-- GLB: adult-road.blend → glb_for_luanti.py --yaw 180 --expect-frames 110
+-- (idle 1–30, walk 41–70, run 81–110). Socket.Mount hijo de Torso.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "road_adult",
@@ -143,8 +143,8 @@ hashimon_bodies.register_creatura_body({
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
 		mount_socket = "Socket.Mount" },
-	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
-	capabilities = { walk = true, run = false, fly = false, swim = false, mount = true },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
 	hitbox = { width = 0.66, height = 1.20 },
 	mesh_height = 10.21,
 	makes_footstep_sound = true,
@@ -311,6 +311,8 @@ hashimon_bodies.register_creatura_body({
 hashimon_bodies.register_creatura_body({
 	id = "beacon_baby",
 	family = "avian",
+	-- Etapa A propia; saca al songbird MIT del peldaño Genesis.
+	replaces = "avian_songbird",
 	mesh = "hashimon_beacon_baby.glb",
 	textures = { "hashimon_beacon_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
