@@ -295,6 +295,14 @@ function hashimon.register_roster_entity(player_name, obj)
 end
 
 function hashimon.clear_player_entities(player_name)
+	if hashimon.uncarry then
+		local player = core.get_player_by_name(player_name)
+		if player and hashimon.carries and hashimon.carries[player_name] then
+			hashimon.uncarry(player, false)
+		elseif hashimon.clear_carry_state then
+			hashimon.clear_carry_state(player_name)
+		end
+	end
 	local list = player_entities[player_name]
 	if not list then
 		return
@@ -350,6 +358,32 @@ local function spawn_creature_entity(pos, creature, owner)
 		end
 	end
 	return obj
+end
+
+--- Public: spawn (or re-spawn) one creature at an exact world position and
+--- register it in the owner's roster list.
+function hashimon.respawn_creature_at(pos, creature, owner)
+	if not pos or not creature or not owner then
+		return nil
+	end
+	local obj = spawn_creature_entity(pos, creature, owner)
+	if obj then
+		hashimon.register_roster_entity(owner, obj)
+	end
+	return obj
+end
+
+--- Drop a dead/replaced ObjectRef from the roster list without clearing others.
+function hashimon.unregister_roster_entity(player_name, obj)
+	local list = player_entities[player_name]
+	if not list or not obj then
+		return
+	end
+	for i = #list, 1, -1 do
+		if list[i] == obj then
+			table.remove(list, i)
+		end
+	end
 end
 
 function hashimon.spawn_roster(player_name, roster)
@@ -442,6 +476,11 @@ core.register_entity("hashimon_entities:creature", {
 
 	on_rightclick = function(self, clicker)
 		if not clicker or not clicker:is_player() then
+			return
+		end
+		if hashimon.try_owner_carry
+			and hashimon.try_owner_carry(clicker, self.object, self.creature, self.owner)
+		then
 			return
 		end
 		if hashimon.try_owner_mount

@@ -138,8 +138,8 @@ core.register_on_joinplayer(function(player, _last_login)
 end)
 
 core.register_chatcommand("hashimon", {
-	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|evolve|mount|mount_element|worldpath>",
-	description = "Hashimon: sync roster (owners), status, debug login, attack, media, dna, evolve, mount, mount_element, worldpath",
+	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|evolve|ritualkit|carry|mount|mount_element|eyes|eyes3|seat|rot|yeet|worldpath>",
+	description = "Hashimon: sync, evolve, carry baby, mount, yeet, …",
 	func = function(name, param)
 		local player = core.get_player_by_name(name)
 		if not player then
@@ -270,8 +270,16 @@ core.register_chatcommand("hashimon", {
 		end
 
 		if cmd == "evolve" then
+			local sub = (rest:match("^(%S*)") or ""):lower()
+			if sub == "ritual" or sub == "baby" or sub == "titan" or sub == "adult" then
+				if not hashimon.evolve_ritual_command then
+					return false, "hashimon_entities mod not loaded."
+				end
+				return hashimon.evolve_ritual_command(name, sub)
+			end
+
 			if not core.check_player_privs(name, { server = true }) then
-				return false, "Requires the server privilege."
+				return false, "Requires the server privilege. (Or: /hashimon evolve titan|baby|ritual)"
 			end
 			if not hashimon.spawn_roster then
 				return false, "hashimon_entities mod not loaded."
@@ -285,7 +293,7 @@ core.register_chatcommand("hashimon", {
 			local stars = tonumber(stars_str) or 10
 			local idx = tonumber(idx_str) or 1
 			if stars < 1 or stars > 33 then
-				return false, "Usage: /hashimon evolve [stars] [index]  (stars 1–33, default 10)"
+				return false, "Usage: /hashimon evolve [stars] [index] | titan | baby | ritual"
 			end
 
 			local creatures = {}
@@ -319,6 +327,27 @@ core.register_chatcommand("hashimon", {
 				creatures[idx].name or creatures[idx].speciesKey or "?",
 				stars
 			)
+		end
+
+		if cmd == "ritualkit" then
+			if not hashimon.give_ritual_kit then
+				return false, "hashimon_entities mod not loaded."
+			end
+			local ok, added = hashimon.give_ritual_kit(player)
+			if not ok then
+				return false, "No se pudo entregar el kit."
+			end
+			if added == 0 then
+				return true, "Ya tienes las herramientas ritual en el inventario."
+			end
+			return true, "Kit ritual opcional entregado. Beta: preferí Shift+D (Titan) / Shift+A (Baby) 1s."
+		end
+
+		if cmd == "carry" then
+			if not hashimon.carry_command then
+				return false, "hashimon_entities mod not loaded."
+			end
+			return hashimon.carry_command(name, rest)
 		end
 
 		if cmd == "mount" then
@@ -405,6 +434,132 @@ core.register_chatcommand("hashimon", {
 			)
 		end
 
+		-- Live mount camera / seat calibration (must be mounted).
+		-- /hashimon eyes <y> [z]   — first-person eye offset; keeps current x
+		-- /hashimon eyes3 <y> [z]  — third-person eye offset (engine clamps Y≤15, Z∈[-5,5])
+		-- /hashimon seat <x> <y> <z> — set_attach seat (Luanti ×10 units)
+		-- /hashimon rot <x> <y> <z>   — set_attach rotation (degrees)
+		if cmd == "eyes" then
+			if not hashimon.apply_mount_view_patch then
+				return false, "hashimon_entities mod not loaded."
+			end
+			local y_s, z_s = rest:match("^(%S+)%s*(%S*)")
+			local y = tonumber(y_s)
+			if not y then
+				return false, "Usage: /hashimon eyes <y> [z]  (while mounted; first-person offset)"
+			end
+			local z = tonumber(z_s)
+			local mount_obj = hashimon.mounts and hashimon.mounts[name]
+			local ent = mount_obj and mount_obj:get_luaentity()
+			local cur = ent and ent._mount_view and ent._mount_view.eye_first
+			local eye_first = {
+				x = (cur and cur.x) or 0,
+				y = y,
+				z = z or ((cur and cur.z) or 0),
+			}
+			local ok, result = hashimon.apply_mount_view_patch(player, { eye_first = eye_first })
+			if not ok then
+				if result == "not_mounted" then
+					return false, "Monta primero (/hashimon mount), luego /hashimon eyes <y> [z]."
+				end
+				return false, "No se pudo aplicar eyes (" .. tostring(result) .. ")."
+			end
+			local v = result.eye_first
+			return true, string.format(
+				"eye_first = { x=%.1f, y=%.1f, z=%.1f }  (copia a mount_view del body)",
+				v.x, v.y, v.z
+			)
+		end
+
+		if cmd == "eyes3" then
+			if not hashimon.apply_mount_view_patch then
+				return false, "hashimon_entities mod not loaded."
+			end
+			local y_s, z_s = rest:match("^(%S+)%s*(%S*)")
+			local y = tonumber(y_s)
+			if not y then
+				return false, "Usage: /hashimon eyes3 <y> [z]  (while mounted; third-person; Z clamp ±5)"
+			end
+			local z = tonumber(z_s)
+			local mount_obj = hashimon.mounts and hashimon.mounts[name]
+			local ent = mount_obj and mount_obj:get_luaentity()
+			local cur = ent and ent._mount_view and ent._mount_view.eye_third
+			local eye_third = {
+				x = (cur and cur.x) or 0,
+				y = y,
+				z = z or ((cur and cur.z) or -5),
+			}
+			local ok, result = hashimon.apply_mount_view_patch(player, { eye_third = eye_third })
+			if not ok then
+				if result == "not_mounted" then
+					return false, "Monta primero (/hashimon mount), luego /hashimon eyes3 <y> [z]."
+				end
+				return false, "No se pudo aplicar eyes3 (" .. tostring(result) .. ")."
+			end
+			local v = result.eye_third
+			return true, string.format(
+				"eye_third = { x=%.1f, y=%.1f, z=%.1f }  (motor clamp Y≤15, Z∈[-5,5])",
+				v.x, v.y, v.z
+			)
+		end
+
+		if cmd == "seat" then
+			if not hashimon.apply_mount_view_patch then
+				return false, "hashimon_entities mod not loaded."
+			end
+			local x_s, y_s, z_s = rest:match("^(%S+)%s+(%S+)%s+(%S+)$")
+			local x, y, z = tonumber(x_s), tonumber(y_s), tonumber(z_s)
+			if not x or not y or not z then
+				return false, "Usage: /hashimon seat <x> <y> <z>  (while mounted; set_attach ×10)"
+			end
+			local ok, result = hashimon.apply_mount_view_patch(player, {
+				seat = { x = x, y = y, z = z },
+			})
+			if not ok then
+				if result == "not_mounted" then
+					return false, "Monta primero (/hashimon mount), luego /hashimon seat <x> <y> <z>."
+				end
+				return false, "No se pudo aplicar seat (" .. tostring(result) .. ")."
+			end
+			local s = result.seat
+			return true, string.format(
+				"seat = { x=%.1f, y=%.1f, z=%.1f }  (si Sam flota, mueve Socket.Mount en Blender)",
+				s.x, s.y, s.z
+			)
+		end
+
+		if cmd == "rot" then
+			if not hashimon.apply_mount_view_patch then
+				return false, "hashimon_entities mod not loaded."
+			end
+			local x_s, y_s, z_s = rest:match("^(%S+)%s+(%S+)%s+(%S+)$")
+			local x, y, z = tonumber(x_s), tonumber(y_s), tonumber(z_s)
+			if not x or not y or not z then
+				return false, "Usage: /hashimon rot <x> <y> <z>  (while mounted; attach rotation °)"
+			end
+			local ok, result = hashimon.apply_mount_view_patch(player, {
+				rot = { x = x, y = y, z = z },
+			})
+			if not ok then
+				if result == "not_mounted" then
+					return false, "Monta primero (/hashimon mount), luego /hashimon rot <x> <y> <z>."
+				end
+				return false, "No se pudo aplicar rot (" .. tostring(result) .. ")."
+			end
+			local r = result.rot
+			return true, string.format(
+				"rot = { x=%.1f, y=%.1f, z=%.1f }  (copia a mount_view.rot del body)",
+				r.x, r.y, r.z
+			)
+		end
+
+		if cmd == "yeet" then
+			if not hashimon.impact_yeet_command then
+				return false, "hashimon_entities mod not loaded."
+			end
+			return hashimon.impact_yeet_command(name, rest)
+		end
+
 		if cmd == "attack" then
 			if not hashimon.attack_nearest_roster then
 				return false, "hashimon_entities mod not loaded."
@@ -444,6 +599,6 @@ core.register_chatcommand("hashimon", {
 			return true, "Blast orb launched."
 		end
 
-		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack, evolve, mount, mount_element"
+		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack, evolve, carry, ritualkit, mount, mount_element, yeet"
 	end,
 })

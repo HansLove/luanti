@@ -2,8 +2,11 @@ local modpath = core.get_modpath("hashimon_entities")
 
 dofile(modpath .. "/entities.lua")
 dofile(modpath .. "/mount.lua")
+dofile(modpath .. "/baby_carry.lua")
 dofile(modpath .. "/voxel_body.lua")
 dofile(modpath .. "/attack.lua")
+dofile(modpath .. "/impact_flight.lua")
+dofile(modpath .. "/evolve_ritual.lua")
 
 -- Dev-only POC for our own animated GLB (/htest). Additive and self-contained —
 -- delete this line and test_bear.lua to remove it entirely.

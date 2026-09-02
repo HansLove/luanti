@@ -105,6 +105,11 @@ core.register_entity("hashimon_entities:voxel_root", {
 		if not clicker or not clicker:is_player() then
 			return
 		end
+		if hashimon.try_owner_carry
+			and hashimon.try_owner_carry(clicker, self.object, self.creature, self.owner)
+		then
+			return
+		end
 		if hashimon.try_owner_mount
 			and hashimon.try_owner_mount(clicker, self.object, self.creature, self.owner)
 		then

@@ -111,6 +111,10 @@ end
 
 function hashimon_bodies.make_step(body_def)
 	return function(self, dtime)
+		if self.carried_by and hashimon.step_carried then
+			hashimon.step_carried(self, dtime)
+			return
+		end
 		if self.rider and hashimon.step_mounted then
 			hashimon.step_mounted(self, dtime)
 			if hashimon_bodies.update_anim_fsm then
@@ -187,6 +191,16 @@ function hashimon_bodies.register_creatura_body(body_def)
 
 		on_rightclick = function(self, clicker)
 			if not clicker:is_player() then
+				return
+			end
+			if hashimon.try_owner_carry
+				and hashimon.try_owner_carry(
+					clicker,
+					self.object,
+					self.hashimon_creature,
+					self.owner
+				)
+			then
 				return
 			end
 			-- Provided by hashimon_entities when that mod is loaded (no hard dep — avoids cycle).

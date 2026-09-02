@@ -109,7 +109,12 @@ hashimon.SPIRITS = {
 	  archetype = "ingenio, oportunidad, supervivencia",
 	  -- Podado 2026-08-31: rodent y marsupial salen a Natural. `serpentine` es
 	  -- familia propia — ningún mod instalado tiene topología serpentina.
-	  line = { "serpentine" }, kin = "wyrm" },
+	  -- kin = edge: si un mundo no tiene el pack propio, `serpentine` se queda sin
+	  -- cuerpos y Key necesita a quién parecerse. Los cocodrilianos de Edge son lo
+	  -- más cercano a una silueta serpentina en todo el catálogo.
+	  -- (Antes decía "wyrm", un nombre animal anterior al renombrado arquetípico
+	  -- que ya no existe: el fallback habría buscado un signo inexistente.)
+	  line = { "serpentine" }, kin = "edge" },
 	{ key = "forge", name = "Forge", name_es = "Fragua",
 	  archetype = "creación, voluntad, transformación",
 	  -- `ape` es familia propia: un simio no es ni constructo ni humanoide, y

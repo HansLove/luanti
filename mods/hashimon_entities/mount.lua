@@ -43,8 +43,8 @@ hashimon.GENESIS_MOBILITY = {
 		id = "aire",
 		mode = "fly",
 		cruise = 7,
-		fly_boost = 2.5,
-		hint = "Montado (Aire) — WASD, espacio subir, sneak bajar, sprint boost, click derecho para bajar.",
+		fly_boost = 3,
+		hint = "Montado (Aire) — WASD, espacio subir, sneak bajar, sprint hyper, click derecho para bajar.",
 	},
 	electrico = {
 		id = "electrico",
@@ -183,16 +183,228 @@ function hashimon.mount_speed_for(creature, profile)
 	return cruise * dna_speed_mult(creature)
 end
 
-local function seat_for(ent)
-	if ent.size_mult then
-		return { x = 0, y = 4 * (ent.size_mult or 1.0), z = 0 }
+-- Rider attach + camera. Per-body mount_view on body_def overrides; else derived
+-- from collisionbox height. Bone priority: mount_view.bone > Socket.Mount >
+-- bones.torso > "" (entity origin). Sam sit pose via player_api when available.
+hashimon._saved_rider_props = hashimon._saved_rider_props or {}
+
+local function vec3_or(v, fallback)
+	if type(v) == "table" and type(v.x) == "number" then
+		return v
 	end
+	return fallback
+end
+
+--- Resolve body_id from a mounted entity (Creatura morph, villain, or DNA compile).
+function hashimon.body_id_from_entity(ent)
+	if not ent then
+		return nil
+	end
+	if ent.body_id then
+		return ent.body_id
+	end
+	if ent.hashimon_morph and ent.hashimon_morph.body_id then
+		return ent.hashimon_morph.body_id
+	end
+	local creature = hashimon.creature_from_entity(ent)
+	if creature and hashimon.compile_morphology then
+		local morph = hashimon.compile_morphology(creature)
+		if morph and morph.body_id then
+			return morph.body_id
+		end
+	end
+	return nil
+end
+
+local function collision_height_for(ent)
 	local props = ent.object and ent.object:get_properties()
-	local h = (props and props.visual_size and props.visual_size.y) or 10
-	if h >= 5 then
-		return { x = 0, y = h * 0.45, z = 0 }
+	local box = props and props.collisionbox
+	if box and #box >= 5 then
+		return box[5] - box[2]
 	end
-	return { x = 0, y = math.max(8, h * 4), z = 0 }
+	local body_id = hashimon.body_id_from_entity(ent)
+	local body = body_id and hashimon.get_body and hashimon.get_body(body_id)
+	if body and body.hitbox and body.hitbox.height then
+		return body.hitbox.height
+	end
+	return 1.0
+end
+
+local function mount_bone_for(body, custom)
+	local raw
+	if custom and custom.bone and custom.bone ~= "" then
+		raw = custom.bone
+	elseif body and body.bones then
+		if body.bones.mount_socket then
+			raw = body.bones.mount_socket
+		elseif body.bones.torso then
+			raw = body.bones.torso
+		end
+	end
+	if not raw or raw == "" then
+		return ""
+	end
+	-- Creatures use Hashimon names; resolve_bone is identity for "hashimon"
+	-- and accepts Socket.Mount / Torso / Arm.L as authored.
+	if hashimon.resolve_bone then
+		return hashimon.resolve_bone(raw, "hashimon")
+	end
+	return raw
+end
+
+--- Default rider seat + camera when body_def.mount_view is absent.
+function hashimon.default_mount_view(ent, profile)
+	local height = collision_height_for(ent)
+	local can_fly = profile and profile.mode == "fly"
+
+	local seat_y
+	if ent.size_mult then
+		seat_y = 4 * (ent.size_mult or 1.0)
+	else
+		seat_y = math.max(8, height * 4)
+	end
+
+	local eye_y = math.max(2, height * 8)
+	local eye_z = can_fly and 4 or 1
+	local third_y = math.min(15, eye_y + 4)
+	local third_z = can_fly and -8 or -5
+
+	return {
+		bone = "",
+		seat = { x = 0, y = seat_y, z = 0 },
+		rot = { x = 0, y = 0, z = 0 },
+		eye_first = { x = 0, y = eye_y, z = eye_z },
+		eye_third = { x = 0, y = third_y, z = third_z },
+		hide_rider = false,
+		forced_visible = false,
+		rider_scale = nil,
+		suggest_camera = nil,
+	}
+end
+
+--- Merge body_def.mount_view with collisionbox-derived defaults.
+function hashimon.resolve_mount_view(ent, profile)
+	local body_id = hashimon.body_id_from_entity(ent)
+	local body = body_id and hashimon.get_body and hashimon.get_body(body_id)
+	local custom = body and body.mount_view
+	local defaults = hashimon.default_mount_view(ent, profile)
+
+	if not custom then
+		defaults.bone = mount_bone_for(body, nil)
+		return defaults
+	end
+
+	local scale = custom.rider_scale
+	if type(scale) ~= "number" or scale <= 0 then
+		scale = nil
+	end
+	-- suggest_camera (alias: prefer_camera) — hint only; does not lock C key.
+	local cam = custom.suggest_camera or custom.prefer_camera
+	if cam ~= "third" and cam ~= "first" and cam ~= "any" then
+		cam = nil
+	end
+
+	return {
+		bone = mount_bone_for(body, custom),
+		seat = vec3_or(custom.seat, defaults.seat),
+		rot = vec3_or(custom.rot, defaults.rot),
+		eye_first = vec3_or(custom.eye_first, defaults.eye_first),
+		eye_third = vec3_or(custom.eye_third, defaults.eye_third),
+		hide_rider = custom.hide_rider == true,
+		forced_visible = custom.forced_visible == true,
+		rider_scale = scale,
+		suggest_camera = cam,
+	}
+end
+
+local function set_rider_attached(player, attached)
+	local name = player:get_player_name()
+	if player_api then
+		player_api.player_attached = player_api.player_attached or {}
+		if attached then
+			player_api.player_attached[name] = true
+		else
+			player_api.player_attached[name] = nil
+		end
+	end
+end
+
+local function set_rider_animation(player, anim)
+	if player_api and player_api.set_animation then
+		player_api.set_animation(player, anim)
+	elseif player.set_animation then
+		local ranges = {
+			sit = { x = 81, y = 160 },
+			stand = { x = 0, y = 79 },
+		}
+		local r = ranges[anim]
+		if r then
+			player:set_animation(r, 30, 0, true)
+		end
+	end
+end
+
+local function save_rider_props(player)
+	local name = player:get_player_name()
+	if hashimon._saved_rider_props[name] then
+		return
+	end
+	local props = player:get_properties()
+	hashimon._saved_rider_props[name] = {
+		pointable = props.pointable,
+		visual_size = props.visual_size,
+	}
+end
+
+--- Shrink Sam to nearly invisible (MIT dragons that still clip).
+local function hide_rider(player)
+	save_rider_props(player)
+	player:set_properties({
+		pointable = false,
+		visual_size = { x = 0.001, y = 0.001 },
+	})
+end
+
+--- Scale Sam to sit proportionally on a large Hashimon (Ark-style visible rider).
+local function scale_rider(player, scale)
+	if type(scale) ~= "number" or scale <= 0 then
+		return
+	end
+	save_rider_props(player)
+	local saved = hashimon._saved_rider_props[player:get_player_name()]
+	local base = saved and saved.visual_size or { x = 1, y = 1 }
+	local bx = (type(base) == "table" and base.x) or 1
+	local by = (type(base) == "table" and base.y) or bx
+	local bz = (type(base) == "table" and base.z) or bx
+	player:set_properties({
+		visual_size = { x = bx * scale, y = by * scale, z = bz * scale },
+	})
+end
+
+local function restore_rider(player)
+	local name = player:get_player_name()
+	local saved = hashimon._saved_rider_props[name]
+	if saved then
+		player:set_properties({
+			pointable = saved.pointable,
+			visual_size = saved.visual_size,
+		})
+		hashimon._saved_rider_props[name] = nil
+	end
+end
+
+local function unlock_camera(player)
+	if not player or not player.set_camera then
+		return
+	end
+	player:set_camera({ mode = "any" })
+end
+
+local function reset_camera(player)
+	if not player or not player.set_camera then
+		return
+	end
+	player:set_camera(nil)
 end
 
 local function clear_water_biolum(ent)
@@ -216,6 +428,7 @@ local function clear_mount_runtime(ent)
 	ent._mount_profile = nil
 	ent._mount_element = nil
 	ent._mount_fly = nil
+	ent._mount_fly_boost = nil
 	ent._mount_glide = nil
 	ent._mount_dig_t = nil
 	ent._mount_burrowing = nil
@@ -223,6 +436,7 @@ local function clear_mount_runtime(ent)
 	ent._fire_jumped = nil
 	ent._fire_fx_t = nil
 	ent._fire_propelling = nil
+	ent._air_fx_t = nil
 	ent.mount_speed = nil
 	if ent._pre_mount_acc then
 		ent.object:set_acceleration(ent._pre_mount_acc)
@@ -233,6 +447,10 @@ end
 --- Try to mount `player` on `mount_obj`. Returns true on success.
 function hashimon.mount(player, mount_obj)
 	local name = player:get_player_name()
+	if hashimon.carries and hashimon.carries[name] then
+		core.chat_send_player(name, "[Hashimon] Suelta el baby primero (/hashimon carry off).")
+		return false
+	end
 	if hashimon.mounts[name] then
 		hashimon.dismount(player)
 	end
@@ -250,6 +468,7 @@ function hashimon.mount(player, mount_obj)
 	ent._mount_profile = profile
 	ent._mount_element = element
 	ent._mount_fly = can_fly
+	ent._mount_fly_boost = false
 	ent._mount_glide = false
 	ent._mount_dig_t = 0
 	ent._mount_burrowing = false
@@ -264,7 +483,16 @@ function hashimon.mount(player, mount_obj)
 	local props0 = ent.object:get_properties()
 	ent._pre_mount_glow = (props0 and props0.glow) or 0
 
-	player:set_attach(mount_obj, "", seat_for(ent), { x = 0, y = 0, z = 0 })
+	local view = hashimon.resolve_mount_view(ent, profile)
+	ent._mount_view = view
+
+	if hashimon.attach_to_socket then
+		hashimon.attach_to_socket(
+			mount_obj, view.bone, player, view.seat, view.rot, "hashimon", view.forced_visible
+		)
+	else
+		player:set_attach(mount_obj, view.bone, view.seat, view.rot, view.forced_visible == true)
+	end
 	if can_fly then
 		player:set_physics_override({ speed = 0, jump = 0, gravity = 0 })
 		ent.object:set_acceleration({ x = 0, y = 0, z = 0 })
@@ -272,7 +500,15 @@ function hashimon.mount(player, mount_obj)
 		player:set_physics_override({ speed = 0, jump = 0 })
 		ent.object:set_acceleration({ x = 0, y = GRAVITY, z = 0 })
 	end
-	player:set_eye_offset({ x = 0, y = 2, z = 0 }, { x = 0, y = 3, z = -4 })
+	player:set_eye_offset(view.eye_first, view.eye_third)
+	set_rider_attached(player, true)
+	set_rider_animation(player, "sit")
+	if view.hide_rider then
+		hide_rider(player)
+	elseif view.rider_scale then
+		scale_rider(player, view.rider_scale)
+	end
+	unlock_camera(player)
 
 	if ent.memorize then
 		ent.order = "stand"
@@ -284,7 +520,62 @@ function hashimon.mount(player, mount_obj)
 	hashimon.mounts[name] = mount_obj
 
 	core.chat_send_player(name, "[Hashimon] " .. (profile.hint or GENERIC_MOBILITY.hint))
+	if view.suggest_camera == "third" then
+		core.chat_send_player(name,
+			"[Hashimon] Vista 3ª recomendada (estilo Ark). Pulsa C para cambiar.")
+	end
 	return true
+end
+
+--- Re-apply seat / eyes on the current mount without remounting (live calibration).
+--- @param player ObjectRef
+--- @param patch table|nil keys: eye_first, eye_third, seat, rot (partial ok)
+--- @return boolean, string|nil ok, err
+function hashimon.apply_mount_view_patch(player, patch)
+	if not player or not player.get_player_name then
+		return false, "no_player"
+	end
+	local name = player:get_player_name()
+	local mount_obj = hashimon.mounts and hashimon.mounts[name]
+	if not mount_obj then
+		return false, "not_mounted"
+	end
+	local ent = mount_obj:get_luaentity()
+	if not ent or ent.rider ~= name then
+		return false, "not_mounted"
+	end
+
+	local view = ent._mount_view
+	if not view then
+		local profile = ent._mount_profile or hashimon.mount_profile_for(hashimon.creature_from_entity(ent))
+		view = hashimon.resolve_mount_view(ent, profile)
+	end
+
+	patch = patch or {}
+	if patch.eye_first then
+		view.eye_first = vec3_or(patch.eye_first, view.eye_first)
+	end
+	if patch.eye_third then
+		view.eye_third = vec3_or(patch.eye_third, view.eye_third)
+	end
+	if patch.seat then
+		view.seat = vec3_or(patch.seat, view.seat)
+	end
+	if patch.rot then
+		view.rot = vec3_or(patch.rot, view.rot)
+	end
+	ent._mount_view = view
+
+	if hashimon.attach_to_socket then
+		hashimon.attach_to_socket(
+			mount_obj, view.bone, player, view.seat, view.rot, "hashimon", view.forced_visible
+		)
+	else
+		player:set_attach(mount_obj, view.bone, view.seat, view.rot, view.forced_visible == true)
+	end
+	player:set_eye_offset(view.eye_first, view.eye_third)
+	set_rider_animation(player, "sit")
+	return true, view
 end
 
 --- Dismount whatever `player` is currently riding, if anything.
@@ -298,11 +589,16 @@ function hashimon.dismount(player)
 	player:set_detach()
 	player:set_physics_override({ speed = 1, jump = 1, gravity = 1 })
 	player:set_eye_offset({ x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 0 })
+	reset_camera(player)
+	set_rider_attached(player, false)
+	set_rider_animation(player, "stand")
+	restore_rider(player)
 
 	if mount_obj then
 		local ent = mount_obj:get_luaentity()
 		if ent and ent.rider == name then
 			ent.rider = nil
+			ent._mount_view = nil
 			clear_mount_runtime(ent)
 			-- QA override cleared on dismount so sync/DNA type is authoritative again.
 			ent._mount_element_override = nil
@@ -547,6 +843,84 @@ local function emit_fire_trail(pos, dir)
 		texture = "default_mese_crystal_fragment.png^[colorize:#FDE68A:140",
 		glow = 14,
 	})
+end
+
+local AIR_WIND_TEX = "default_mese_crystal_fragment.png^[colorize:#BFDBFE:100"
+local AIR_WIND_STREAK_TEX = "default_mese_crystal_fragment.png^[colorize:#E0F2FE:140"
+local AIR_HYPER_CORE_TEX = "default_mese_crystal_fragment.png^[colorize:#7DD3FC:180"
+
+local function flat_flight_dir(dir)
+	local len = math.sqrt(dir.x * dir.x + dir.z * dir.z)
+	if len < 0.01 then
+		return { x = 0, y = 0, z = -1 }
+	end
+	return { x = dir.x / len, y = 0, z = dir.z / len }
+end
+
+--- Hyper flight: wind streaks trailing behind the mount.
+local function emit_air_hyper_trail(pos, dir)
+	local d = flat_flight_dir(dir)
+	core.add_particlespawner({
+		amount = 22,
+		time = 0.07,
+		minpos = { x = pos.x - 0.55, y = pos.y - 0.15, z = pos.z - 0.55 },
+		maxpos = { x = pos.x + 0.55, y = pos.y + 1.6, z = pos.z + 0.55 },
+		minvel = { x = -d.x * 9 - 0.7, y = -0.5, z = -d.z * 9 - 0.7 },
+		maxvel = { x = -d.x * 16 + 0.7, y = 0.9, z = -d.z * 16 + 0.7 },
+		minacc = { x = -d.x * 2.5, y = 0, z = -d.z * 2.5 },
+		maxacc = { x = -d.x * 5, y = 0.25, z = -d.z * 5 },
+		minexptime = 0.12,
+		maxexptime = 0.32,
+		minsize = 1.0,
+		maxsize = 2.6,
+		texture = AIR_WIND_STREAK_TEX,
+		glow = 10,
+	})
+	core.add_particlespawner({
+		amount = 14,
+		time = 0.07,
+		minpos = { x = pos.x - 1.4, y = pos.y + 0.1, z = pos.z - 1.4 },
+		maxpos = { x = pos.x + 1.4, y = pos.y + 2.0, z = pos.z + 1.4 },
+		minvel = { x = -d.x * 11 - 2.2, y = -0.35, z = -d.z * 11 - 2.2 },
+		maxvel = { x = -d.x * 18 + 2.2, y = 0.55, z = -d.z * 18 + 2.2 },
+		minacc = { x = 0, y = 0, z = 0 },
+		maxacc = { x = 0, y = 0.08, z = 0 },
+		minexptime = 0.1,
+		maxexptime = 0.25,
+		minsize = 0.7,
+		maxsize = 1.6,
+		texture = AIR_WIND_TEX,
+		glow = 8,
+	})
+end
+
+--- Speed lines near the rider (visible in 1ª / 3ª persona durante hyper).
+local function emit_air_rider_wind(rider_pos, dir)
+	local d = flat_flight_dir(dir)
+	local rx, ry, rz = rider_pos.x, rider_pos.y, rider_pos.z
+	local ahead_x = rx + d.x * 2.8
+	local ahead_z = rz + d.z * 2.8
+	for _ = 1, 7 do
+		local side = (math.random() - 0.5) * 2.8
+		core.add_particle({
+			pos = {
+				x = ahead_x - d.z * side + (math.random() - 0.5) * 0.9,
+				y = ry + 0.6 + math.random() * 1.4,
+				z = ahead_z + d.x * side + (math.random() - 0.5) * 0.9,
+			},
+			velocity = {
+				x = -d.x * (13 + math.random() * 7),
+				y = (math.random() - 0.5) * 2.5,
+				z = -d.z * (13 + math.random() * 7),
+			},
+			acceleration = { x = -d.x * 4, y = 0, z = -d.z * 4 },
+			expirationtime = 0.16 + math.random() * 0.14,
+			size = 0.55 + math.random() * 1.1,
+			collisiondetection = false,
+			texture = AIR_HYPER_CORE_TEX,
+			glow = 12,
+		})
+	end
 end
 
 local WATER_GLOW_CRUISE = 8
@@ -863,8 +1237,11 @@ function hashimon.step_mounted(self, dtime)
 	-- --- Air: flight boost ---
 	local boost = 1
 	if mode == "fly" and control.aux1 then
-		boost = profile.fly_boost or 2.5
+		boost = profile.fly_boost or 3
 		speed = cruise * boost
+		self._mount_fly_boost = true
+	else
+		self._mount_fly_boost = false
 	end
 
 	-- Rocket feels committed: push forward even if W is idle while propelling.
@@ -923,6 +1300,17 @@ function hashimon.step_mounted(self, dtime)
 			vy = FLY_HOVER
 		else
 			vy = math.max(vy * 0.9, FLY_HOVER)
+		end
+		if self._mount_fly_boost then
+			self._air_fx_t = (self._air_fx_t or 0) + dtime
+			if self._air_fx_t >= 0.07 then
+				self._air_fx_t = 0
+				emit_air_hyper_trail(pos, dir)
+				local rider_pos = rider_obj:get_pos()
+				if rider_pos then
+					emit_air_rider_wind(rider_pos, dir)
+				end
+			end
 		end
 	elseif mode == "water" and in_liquid then
 		-- Neutral buoyancy while submerged; sneak dives, jump rises.

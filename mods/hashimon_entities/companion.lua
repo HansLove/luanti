@@ -125,6 +125,16 @@ creatura.register_mob("hashimon_entities:companion", {
 		if not clicker:is_player() then
 			return
 		end
+		if hashimon.try_owner_carry
+			and hashimon.try_owner_carry(
+				clicker,
+				self.object,
+				self.hashimon_creature,
+				self.owner
+			)
+		then
+			return
+		end
 		if hashimon.try_owner_mount
 			and hashimon.try_owner_mount(
 				clicker,

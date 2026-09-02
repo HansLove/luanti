@@ -1,5 +1,35 @@
 -- Cuerpos PROPIOS de Hashimon.
 --
+-- CONVENCIÓN DE NOMBRE
+--
+--     hashimon_<signo>_<etapa>[_<elemento>].glb
+--
+--     hashimon_guardian_baby.glb        universal, sirve a los cinco elementos
+--     hashimon_guardian_adult.glb       universal
+--     hashimon_guardian_adult_air.glb   variante elemental (capa V2)
+--     hashimon_guardian_apex_fire.glb
+--
+-- El `id` del registro es el nombre sin el prefijo: `guardian_adult_air`. Ese
+-- mismo identificador nombra el archivo del mod, el de la web y la clave de
+-- SPIRIT_BABY_MODEL en spirits.ts, para que no haya traducciones intermedias.
+--
+-- Sin elemento = universal. Con elemento = variante que SUSTITUYE al universal
+-- de su peldaño (campo `replaces`), no que se suma a él.
+--
+-- ELEMENTOS EN INGLÉS EN EL ARCHIVO, en español en el campo `element`:
+--
+--     fire · water · air · earth · electric
+--
+-- Esa asimetría es deliberada, no un descuido. El identificador interno del
+-- elemento ("aire") está dentro del preimagen del ADN vía la speciesKey
+-- g2_<signo>_<elemento>; cambiarlo cambiaría el ADN de toda criatura viva y
+-- rompería su PoW. El nombre de archivo no tiene esa atadura, así que va en
+-- inglés como el resto del código.
+--
+-- Si falta el archivo de una celda, el sistema cae al universal de su etapa y,
+-- si tampoco existe, a la etapa anterior. La ausencia es el caso normal
+-- mientras el grafo se llena; sólo el fallback debe ser la excepción.
+--
 -- Distinto en naturaleza al resto del pack. Los demás archivos sólo REFERENCIAN
 -- mallas que otro mod ya instaló (animalia_wolf.b3d y compañía) y por eso no
 -- redistribuyen nada. Estos SÍ se distribuyen con el juego: los autoramos
@@ -31,10 +61,10 @@
 -- stage 1 aparecía montado en un dragón adulto.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "dragon_hatchling",
+	id = "crown_baby",
 	family = "dragon",
-	mesh = "hashimon_dragon_hatchling.glb",
-	textures = { "hashimon_dragon_hatchling.png" },
+	mesh = "hashimon_crown_baby.glb",
+	textures = { "hashimon_crown_baby.png" },
 	-- Rig completo del estándar: los diez huesos, `Tail` incluida. Fue el primer
 	-- asset propio y en su primera versión le faltaba, así que su `tailScale`
 	-- —el rasgo más visible en un dragón— no llegaba a ningún hueso.
@@ -64,10 +94,10 @@ hashimon_bodies.register_creatura_body({
 -- multiplicador a las cuatro.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "ursine_cub",
+	id = "guardian_baby",
 	family = "ursine",
-	mesh = "hashimon_ursine_cub.glb",
-	textures = { "hashimon_ursine_cub.png" },
+	mesh = "hashimon_guardian_baby.glb",
+	textures = { "hashimon_guardian_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -84,10 +114,10 @@ hashimon_bodies.register_creatura_body({
 -- hasta las orejas del nivel 3 opcional.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "equine_foal",
+	id = "road_baby",
 	family = "equine",
-	mesh = "hashimon_equine_foal.glb",
-	textures = { "hashimon_equine_foal.png" },
+	mesh = "hashimon_road_baby.glb",
+	textures = { "hashimon_road_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -111,10 +141,10 @@ hashimon_bodies.register_creatura_body({
 -- facetada. Se registra SIN el rescate `contrast`, a propósito.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "arthropod_mantis_baby",
+	id = "bloom_baby",
 	family = "arthropod",
-	mesh = "hashimon_arthropod_mantis_baby.glb",
-	textures = { "hashimon_arthropod_mantis_baby.png" },
+	mesh = "hashimon_bloom_baby.glb",
+	textures = { "hashimon_bloom_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
 		limb_m_l = "Limb.M.L", limb_m_r = "Limb.M.R" },
@@ -140,10 +170,10 @@ hashimon_bodies.register_creatura_body({
 -- (docs/SKELETON_STANDARD_V1.md §1.3), que el sistema todavía no lee.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "serpentine_snakelet",
+	id = "key_baby",
 	family = "serpentine",
-	mesh = "hashimon_serpentine_snakelet.glb",
-	textures = { "hashimon_serpentine_snakelet.png" },
+	mesh = "hashimon_key_baby.glb",
+	textures = { "hashimon_key_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
@@ -162,10 +192,10 @@ hashimon_bodies.register_creatura_body({
 -- clave ausente sin quejarse.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "chelonian_hatchling",
+	id = "bastion_baby",
 	family = "chelonian",
-	mesh = "hashimon_chelonian_hatchling.glb",
-	textures = { "hashimon_chelonian_hatchling.png" },
+	mesh = "hashimon_bastion_baby.glb",
+	textures = { "hashimon_bastion_baby.png" },
 	bones = { head = "Head", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -192,10 +222,10 @@ hashimon_bodies.register_creatura_body({
 -- aproximación del operador, no el operador del motor.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "ape_juvenile",
+	id = "forge_baby",
 	family = "ape",
-	mesh = "hashimon_ape_juvenile.glb",
-	textures = { "hashimon_ape_juvenile.png" },
+	mesh = "hashimon_forge_baby.glb",
+	textures = { "hashimon_forge_baby.png" },
 	contrast = { 90, 40 },
 	bones = { head = "Head", neck = "Neck", torso = "Torso",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
@@ -217,10 +247,10 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 
 hashimon_bodies.register_creatura_body({
-	id = "canine_pup",
+	id = "hearth_baby",
 	family = "canine",
-	mesh = "hashimon_canine_pup.glb",
-	textures = { "hashimon_canine_pup.png" },
+	mesh = "hashimon_hearth_baby.glb",
+	textures = { "hashimon_hearth_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -231,10 +261,10 @@ hashimon_bodies.register_creatura_body({
 })
 
 hashimon_bodies.register_creatura_body({
-	id = "feline_catling",
+	id = "mirror_baby",
 	family = "feline",
-	mesh = "hashimon_feline_catling.glb",
-	textures = { "hashimon_feline_catling.png" },
+	mesh = "hashimon_mirror_baby.glb",
+	textures = { "hashimon_mirror_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -245,10 +275,10 @@ hashimon_bodies.register_creatura_body({
 })
 
 hashimon_bodies.register_creatura_body({
-	id = "avian_fledgling",
+	id = "beacon_baby",
 	family = "avian",
-	mesh = "hashimon_avian_fledgling.glb",
-	textures = { "hashimon_avian_fledgling.png" },
+	mesh = "hashimon_beacon_baby.glb",
+	textures = { "hashimon_beacon_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -261,10 +291,10 @@ hashimon_bodies.register_creatura_body({
 })
 
 hashimon_bodies.register_creatura_body({
-	id = "theropod_hatchling",
+	id = "edge_baby",
 	family = "theropod",
-	mesh = "hashimon_theropod_hatchling.glb",
-	textures = { "hashimon_theropod_hatchling.png" },
+	mesh = "hashimon_edge_baby.glb",
+	textures = { "hashimon_edge_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -278,10 +308,10 @@ hashimon_bodies.register_creatura_body({
 -- las LIMB_KEYS con fin_l/fin_r/fin_t. Sin patas: declara siete claves y
 -- proportions.lua omite las ausentes.
 hashimon_bodies.register_creatura_body({
-	id = "aquatic_calf",
+	id = "depth_baby",
 	family = "aquatic",
-	mesh = "hashimon_aquatic_calf.glb",
-	textures = { "hashimon_aquatic_calf.png" },
+	mesh = "hashimon_depth_baby.glb",
+	textures = { "hashimon_depth_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", fin_t = "Fin.T" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -306,12 +336,12 @@ hashimon_bodies.register_creatura_body({
 -- tendrían que ir en el rig como `Wing.L/R`, que este cuerpo aún no declara.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
-	id = "ursine_bear_air",
+	id = "guardian_adult_air",
 	family = "ursine",
 	element = "aire",
 	replaces = "ursine_bear",
-	mesh = "hashimon_ursine_bear_air.glb",
-	textures = { "hashimon_ursine_bear_air.png" },
+	mesh = "hashimon_guardian_adult_air.glb",
+	textures = { "hashimon_guardian_adult_air.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
@@ -319,4 +349,109 @@ hashimon_bodies.register_creatura_body({
 	hitbox = { width = 0.55, height = 1.00 },
 	mesh_height = 11.12,
 	makes_footstep_sound = true,
+})
+
+-- ---------------------------------------------------------------------------
+-- CAPA V2 · BLOOM AIRE — oruga y su imago.
+--
+-- Para un Bloom de aire la mantis genérica deja de existir: nace oruga y se
+-- convierte en lo que sale del capullo. Es la primera línea del juego donde el
+-- elemento decide la criatura entera y no sólo su acabado, y encaja con el signo
+-- —cambio, renovación, crecimiento—: Bloom ES la metamorfosis.
+--
+-- El adulto sustituye a `arthropod_wasp`, que además estaba roto: sus tres
+-- animaciones apuntaban al mismo clip de 5 frames, así que ni volaba pese a
+-- declarar `fly`, ni distinguía quieta de andando.
+-- ---------------------------------------------------------------------------
+hashimon_bodies.register_creatura_body({
+	id = "bloom_baby_air",
+	family = "arthropod",
+	element = "aire",
+	replaces = "bloom_baby",
+	mesh = "hashimon_bloom_baby_air.glb",
+	textures = { "hashimon_bloom_baby_air.png" },
+	-- Sin patas traseras: una oruga se arrastra. proportions.lua omite las
+	-- claves ausentes sin quejarse.
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
+	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
+	hitbox = { width = 0.20, height = 0.35 },
+	mesh_height = 0.71,
+	makes_footstep_sound = false,
+})
+
+hashimon_bodies.register_creatura_body({
+	id = "bloom_adult_air",
+	family = "arthropod",
+	element = "aire",
+	replaces = "arthropod_wasp",
+	mesh = "hashimon_bloom_adult_air.glb",
+	textures = { "hashimon_bloom_adult_air.png" },
+	-- Socket.Mount = asiento (hijo de Torso en la silla). Cámara = eye_*; no
+	-- meter el socket en el cráneo. Ver docs/SKELETON_STANDARD_V1.md §3a.
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		wing_l = "Wing.L", wing_r = "Wing.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, fly = 30, fly_boost = 30 }),
+	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
+	hitbox = { width = 1.10, height = 2.00 },
+	mesh_height = 7.56,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 10, y = 185, z = -10 }, -- calibrado in-game /hashimon rot
+		-- Calibrado in-game (1ª persona por encima de la cresta).
+		eye_first = { x = 0, y = 25, z = 5 },
+		eye_third = { x = 0, y = 15, z = -5 }, -- tope del motor
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.5,
+		suggest_camera = "third",
+	},
+})
+
+-- ---------------------------------------------------------------------------
+-- CAPA V2 · BEACON AIRE — el faro adulto.
+--
+-- Sustituye al pteranodonte prestado (GPL) en el camino de un Beacon de aire.
+--
+-- `contrast` va con el brillo NEGATIVO, al revés que los rescates anteriores.
+-- Su textura salió muy clara (media 0.72) y plana (sd 0.098): el rescate
+-- estándar {90,40} la habría dejado en media 0.99, casi blanca. Medido con
+-- scripts/luanti_contrast.py, que porta el operador del motor:
+--     {90,40}    sd 0.053  media 0.99   <- peor
+--     {110,-50}  sd 0.333  media 0.65   <- elegido
+-- ---------------------------------------------------------------------------
+hashimon_bodies.register_creatura_body({
+	id = "beacon_adult_air",
+	family = "avian",
+	element = "aire",
+	replaces = "pterosaur_pteranodon",
+	mesh = "hashimon_beacon_adult_air.glb",
+	textures = { "hashimon_beacon_adult_air.png" },
+	contrast = { 110, -50 },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", wing_l = "Wing.L", wing_r = "Wing.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
+	-- Sin `fly`: sólo tiene clips de idle y walk. Declarar la capacidad sin la
+	-- animación es el defecto que arrastra la avispa; no se repite aquí.
+	capabilities = { walk = true, run = false, fly = false, swim = false, mount = true },
+	hitbox = { width = 0.70, height = 1.20 },
+	mesh_height = 11.60,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 20, z = 3 },
+		eye_third = { x = 0, y = 15, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.65,
+		suggest_camera = "third",
+	},
 })

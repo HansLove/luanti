@@ -211,6 +211,14 @@ R({
 		fly = { range = { x = 401, y = 439 }, speed = 30, loop = true },
 	},
 	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
+	mount_view = {
+		bone = "Torso",
+		seat = { x = 0, y = 0, z = 3 },
+		rot = { x = 0, y = 0, z = 0 },
+		eye_first = { x = 0, y = 12, z = 5 },
+		eye_third = { x = 0, y = 15, z = -10 },
+		hide_rider = true,
+	},
 })
 
 R({
@@ -227,6 +235,14 @@ R({
 		fly = { range = { x = 401, y = 439 }, speed = 30, loop = true },
 	},
 	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
+	mount_view = {
+		bone = "Torso",
+		seat = { x = 0, y = 0, z = 3 },
+		rot = { x = 0, y = 0, z = 0 },
+		eye_first = { x = 0, y = 12, z = 5 },
+		eye_third = { x = 0, y = 15, z = -10 },
+		hide_rider = true,
+	},
 })
 
 core.log("action", "[hashimon_bodies] +14 extra MIT bodies")

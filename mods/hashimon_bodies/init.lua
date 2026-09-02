@@ -167,8 +167,7 @@ hashimon_bodies.register_creatura_body({
 
 -- ---------------------------------------------------------------------------
 -- EQUINE — Animalia horse. The only registered body large enough to ride;
--- capabilities.mount is metadata only — wiring mount.lua (stage >= 10) to
--- Creatura bodies is separate work, it currently drives voxel bodies.
+-- capabilities.mount + mount_view drive hashimon_entities/mount.lua (stage >= 10).
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "equine_horse",
@@ -199,6 +198,15 @@ hashimon_bodies.register_creatura_body({
 		run = { range = { x = 101, y = 119 }, speed = 40, loop = true },
 	},
 	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	-- Rider: Sam sit on Torso; prefer Socket.Mount when the rig has it (see SKELETON_STANDARD_V1).
+	mount_view = {
+		bone = "Torso",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 0, z = 0 },
+		eye_first = { x = 0, y = 6, z = 1 },
+		eye_third = { x = 0, y = 10, z = -5 },
+		hide_rider = false,
+	},
 })
 
 -- ---------------------------------------------------------------------------

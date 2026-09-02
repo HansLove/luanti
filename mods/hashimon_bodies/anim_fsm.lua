@@ -26,8 +26,12 @@ function hashimon_bodies.update_anim_fsm(self, body_def)
 	if caps.swim and body_def.animations.swim and node_is_liquid(self.object:get_pos()) then
 		anim_name = "swim"
 	elseif caps.fly and (horiz > 1.5 or (vel.y and math.abs(vel.y) > 0.8)) then
-		anim_name = body_def.animations.fly and "fly"
-			or (body_def.animations.hover and "hover" or "walk")
+		if self._mount_fly_boost and body_def.animations.fly_boost then
+			anim_name = "fly_boost"
+		else
+			anim_name = body_def.animations.fly and "fly"
+				or (body_def.animations.hover and "hover" or "walk")
+		end
 	elseif horiz > (caps.run and 5 or 99) and body_def.animations.run then
 		anim_name = "run"
 	elseif horiz > 0.35 and body_def.animations.walk then

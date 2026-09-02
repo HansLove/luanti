@@ -48,6 +48,15 @@ local SLOT_FRACTIONS = {
 	markings = { x = 0, y = 0.75, z = 0 },
 }
 
+-- Hashimon sockets (SKELETON_STANDARD_V1). When the body declares the socket
+-- bone, attach there at {0,0,0}; otherwise fall back to SLOT_FRACTIONS.
+local SLOT_SOCKET = {
+	horns = "Socket.Head",
+	wings = "Socket.Back",
+	tail_glow = "Socket.Tail",
+	markings = "Socket.Chest",
+}
+
 local ATTACH_VISUAL = {
 	horns = { size = { x = 0.12, y = 0.25, z = 0.12 }, hex_key = "accent" },
 	wings = { size = { x = 0.35, y = 0.08, z = 0.2 }, hex_key = "base" },
@@ -79,12 +88,43 @@ local function slot_offset(body_id, kind)
 	}, height / 0.7
 end
 
+local function body_has_socket(body, socket_name)
+	if not body or not body.bones or not socket_name then
+		return false
+	end
+	for _, bone in pairs(body.bones) do
+		if bone == socket_name then
+			return true
+		end
+	end
+	if body.mount_view and body.mount_view.bone == socket_name then
+		return true
+	end
+	return false
+end
+
 local function spawn_attach(parent, body_id, kind, ramp)
-	local off, scale = slot_offset(body_id, kind)
 	local vis = ATTACH_VISUAL[kind]
-	if not off or not vis then
+	if not vis then
 		return
 	end
+	local body = hashimon.get_body and hashimon.get_body(body_id)
+	local socket = SLOT_SOCKET[kind]
+	local use_socket = socket and body_has_socket(body, socket)
+		and hashimon.attach_to_socket
+
+	local off, scale
+	if use_socket then
+		off = { x = 0, y = 0, z = 0 }
+		local height = (body and body.hitbox and body.hitbox.height) or 0.7
+		scale = height / 0.7
+	else
+		off, scale = slot_offset(body_id, kind)
+		if not off then
+			return
+		end
+	end
+
 	local hex = ramp[vis.hex_key] and ramp[vis.hex_key].hex or ramp.base.hex
 	local obj = core.add_entity(parent:get_pos(), "hashimon_bodies:attach_part")
 	if not obj then
@@ -101,8 +141,12 @@ local function spawn_attach(parent, body_id, kind, ramp)
 			z = vis.size.z * scale,
 		},
 	})
-	-- No ×10 here on purpose; see slot_offset's note.
-	obj:set_attach(parent, "", off, { x = 0, y = 0, z = 0 })
+	if use_socket then
+		hashimon.attach_to_socket(parent, socket, obj, off, { x = 0, y = 0, z = 0 }, "hashimon")
+	else
+		-- No ×10 here on purpose; see slot_offset's note.
+		obj:set_attach(parent, "", off, { x = 0, y = 0, z = 0 })
+	end
 	return obj
 end
 

@@ -11,7 +11,8 @@
 --     run              81     30 frames   no
 --     fly             121     30 frames   no  (capabilities.fly)
 --     swim            161     30 frames   no  (capabilities.swim)
---     (reservado)     201                 attack / hurt
+--     fly_boost       201     30 frames   no  (hold Sprint/E en montura aérea)
+--     (reservado)     241                 attack / hurt
 --
 --     inicio del clip n = 1 + 40*(n-1)
 --
@@ -49,6 +50,7 @@ hashimon_bodies.ANIM_START = {
 	run  = 81,
 	fly  = 121,
 	swim = 161,
+	fly_boost = 201,
 }
 
 hashimon_bodies.ANIM_BUDGET = 30
@@ -58,7 +60,7 @@ hashimon_bodies.ANIM_FPS = 24
 -- se nombra en Blender. La traducción vive aquí y en ningún otro sitio.
 local ENGINE_NAME = { idle = "stand" }
 
-local ORDER = { "idle", "walk", "run", "fly", "swim" }
+local ORDER = { "idle", "walk", "run", "fly", "swim", "fly_boost" }
 
 --- Tabla `animations` a partir de la LONGITUD de cada clip.
 ---
