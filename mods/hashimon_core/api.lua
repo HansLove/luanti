@@ -316,6 +316,45 @@ function hashimon.push_towns(secret, payload, callback)
 	end)
 end
 
+-- Poll the API for pending town political actions (co-mayor promote/demote made on
+-- the website). callback(ok, err, actions) — actions is a list the world re-validates
+-- and applies in Towny. Server-secret authed.
+function hashimon.fetch_town_actions(secret, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-town-actions",
+		method = "GET",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Accept", "application/json" },
+		}),
+	}, function(res)
+		if not res.completed then callback(false, "request_incomplete", nil); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res), nil); return end
+		local body = parse_json_or_nil(res.data)
+		if not body or type(body.actions) ~= "table" then callback(false, "invalid_response", nil); return end
+		callback(true, nil, body.actions)
+	end)
+end
+
+-- Acknowledge a town action after the world applied or rejected it, so the API can
+-- close it out. `result` is "applied" or "rejected". Server-secret authed.
+function hashimon.ack_town_action(secret, id, result, detail, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-town-actions/ack",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json({ id = id, result = result, detail = detail or "" }),
+	}, function(res)
+		if not res.completed then if callback then callback(false, "request_incomplete") end; return end
+		if res.code ~= 200 then if callback then callback(false, http_failure_code(res)) end; return end
+		if callback then callback(true, nil) end
+	end)
+end
+
 -- Push an in-game signup to the API. `entry` is the "#1#salt#verifier" the
 -- engine handed to create_auth; the plaintext never reaches this server.
 function hashimon.luanti_register(secret, name, entry, callback)
