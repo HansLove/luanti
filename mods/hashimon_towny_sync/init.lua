@@ -21,6 +21,8 @@ local PUSH_INTERVAL = 5.0    -- seconds between per-player change-detection swee
 local JOIN_DELAY    = 3.0    -- let Towny finish loading the player's town first
 local TOWNS_INTERVAL = 15.0  -- seconds between whole-world town-snapshot sweeps
 local TOWNS_BOOT_DELAY = 6.0 -- let storage load town_array before the first push
+local TOWNS_FORCE_INTERVAL = 120.0 -- force a full re-push this often so the API projection
+                                   -- self-heals if it ever loses data (restart/clear/downtime)
 
 -- last signature pushed per player, so we only POST when something actually changed
 local last_sig = {}
@@ -200,13 +202,17 @@ end
 core.after(TOWNS_BOOT_DELAY, function() push_towns(true) end)
 
 local towns_acc = 0
+local force_acc = 0
 core.register_globalstep(function(dtime)
 	towns_acc = towns_acc + dtime
+	force_acc = force_acc + dtime
 	if towns_acc < TOWNS_INTERVAL then
 		return
 	end
 	towns_acc = 0
-	push_towns(false)
+	local force = false
+	if force_acc >= TOWNS_FORCE_INTERVAL then force_acc = 0; force = true end
+	push_towns(force)
 end)
 
 core.log("action", "[hashimon_towny_sync] loaded. Pushing town summaries + world snapshot to the API.")

@@ -128,6 +128,40 @@ hashimon_bodies.register_creatura_body({
 })
 
 -- ---------------------------------------------------------------------------
+-- EQUINE — adulto propio. Etapa B del linaje Road.
+--
+-- Sustituye al caballo MIT (`equine_horse`) en el peldaño desarrollado.
+-- GLB: adult-road.blend → glb_for_luanti.py --yaw 180 --rename Torax=Torso
+-- --expect-frames 70. Socket.Mount hijo de Torso (tras el rename).
+-- ---------------------------------------------------------------------------
+hashimon_bodies.register_creatura_body({
+	id = "road_adult",
+	family = "equine",
+	replaces = "equine_horse",
+	mesh = "hashimon_road_adult.glb",
+	textures = { "hashimon_road_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
+	capabilities = { walk = true, run = false, fly = false, swim = false, mount = true },
+	hitbox = { width = 0.66, height = 1.20 },
+	mesh_height = 10.21,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 12, z = 2 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.75,
+		suggest_camera = "third",
+	},
+})
+
+-- ---------------------------------------------------------------------------
 -- ARTHROPOD — mantis cría. Etapa A de Bloom.
 --
 -- Primer cuerpo hexápodo del catálogo: trae `Limb.M.L/R`, el par medio del
@@ -417,6 +451,8 @@ hashimon_bodies.register_creatura_body({
 -- CAPA V2 · BEACON AIRE — el faro adulto.
 --
 -- Sustituye al pteranodonte prestado (GPL) en el camino de un Beacon de aire.
+-- GLB: adult-faro-air.blend → glb_for_luanti.py --yaw 180 --expect-frames 230.
+-- Socket.Mount hijo de Torso; clips idle/walk/fly/fly_boost (hyper 201–230).
 --
 -- `contrast` va con el brillo NEGATIVO, al revés que los rescates anteriores.
 -- Su textura salió muy clara (media 0.72) y plana (sd 0.098): el rescate
@@ -436,10 +472,8 @@ hashimon_bodies.register_creatura_body({
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", wing_l = "Wing.L", wing_r = "Wing.R",
 		mount_socket = "Socket.Mount" },
-	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
-	-- Sin `fly`: sólo tiene clips de idle y walk. Declarar la capacidad sin la
-	-- animación es el defecto que arrastra la avispa; no se repite aquí.
-	capabilities = { walk = true, run = false, fly = false, swim = false, mount = true },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, fly = 30, fly_boost = 30 }),
+	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
 	hitbox = { width = 0.70, height = 1.20 },
 	mesh_height = 11.60,
 	makes_footstep_sound = true,

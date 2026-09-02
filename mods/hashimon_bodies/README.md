@@ -41,7 +41,7 @@ Canonical **Creatura** body registry for Hashimon roster creatures.
 | `rider_scale` | Multiply Sam `visual_size` while mounted (e.g. `0.65` on tall air mounts) |
 | `suggest_camera` | `"third"` hints Ark-style third person on mount (C stays free); alias: `prefer_camera` |
 
-Own rideables (`bloom_adult_air`, `beacon_adult_air`) declare `bones.mount_socket`
+Own rideables (`bloom_adult_air`, `beacon_adult_air`, `road_adult`) declare `bones.mount_socket`
 and a calibrated `mount_view`. Bodies without `mount_view` get collisionbox-derived
 defaults (height × 8 for first-person lift). Live tune while mounted:
 `/hashimon eyes <y> [z]`, `/hashimon eyes3 <y> [z]`, `/hashimon seat <x> <y> <z>`,
