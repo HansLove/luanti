@@ -145,18 +145,19 @@ hashimon_bodies.register_creatura_body({
 		mount_socket = "Socket.Mount" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
 	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
-	hitbox = { width = 0.66, height = 1.20 },
+	-- Hitbox ≈ caballo MIT (1.95): a 1.20 el mesh se ve de juguete junto a Sam.
+	hitbox = { width = 0.85, height = 1.95 },
 	mesh_height = 10.21,
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
-		seat = { x = 0, y = 0, z = 0 },
+		seat = { x = 0, y = -2, z = 0 },
 		rot = { x = 0, y = 180, z = 0 },
-		eye_first = { x = 0, y = 12, z = 2 },
+		eye_first = { x = 0, y = 14, z = 2 },
 		eye_third = { x = 0, y = 12, z = -5 },
 		hide_rider = false,
 		forced_visible = true,
-		rider_scale = 0.75,
+		rider_scale = 0.45,
 		suggest_camera = "third",
 	},
 })
