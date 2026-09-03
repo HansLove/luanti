@@ -63,6 +63,9 @@ R({
 		head = "Head", neck = "Neck", torso = "Torso",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	family = "cervid",
+	-- Grafo V1 §6: Natural (salvo B alt futuro). Fuera de Genesis Road — si no,
+	-- a ~11★ el progreso cae en alce/venado en vez de road_adult.
+	natural_only = true,
 	mesh = "animalia_reindeer.b3d",
 	textures = { "animalia_reindeer.png", "animalia_reindeer_calf.png" },
 	visual_size_base = 10.0,

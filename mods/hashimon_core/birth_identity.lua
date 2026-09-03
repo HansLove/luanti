@@ -102,9 +102,10 @@ hashimon.SPIRITS = {
 	-- PROVISIONAL
 	{ key = "road", name = "Road", name_es = "Camino",
 	  archetype = "viaje, constancia, libertad",
-	  -- Podado 2026-08-31: livestock sale a Natural. Es la línea que producía la
-	  -- oveja gigante de diez estrellas.
-	  line = { "equine", "cervid" }, kin = nil },
+	  -- Solo équido propio: road_baby → road_adult. livestock ya salió a Natural
+	  -- (2026-08-31). cervid_reindeer también a Natural — si quedaba en la línea
+	  -- intercalaba alce entre potro y adulto a ~11★.
+	  line = { "equine" }, kin = nil },
 	{ key = "key", name = "Key", name_es = "Llave",
 	  archetype = "ingenio, oportunidad, supervivencia",
 	  -- Podado 2026-08-31: rodent y marsupial salen a Natural. `serpentine` es
