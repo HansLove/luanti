@@ -38,7 +38,7 @@ Canonical **Creatura** body registry for Hashimon roster creatures.
 | `eye_first` / `eye_third` | Camera offsets via `set_eye_offset` (first person unclamped; third Z clamped to ±5) |
 | `hide_rider` | Shrink Sam to 0.001 — only for huge MIT flyers that still clip; own bodies keep Sam visible |
 | `forced_visible` | Pass `true` to `set_attach` so the rider mesh appears in first person |
-| `rider_scale` | Multiply Sam `visual_size` while mounted (e.g. `0.65` on tall air mounts) |
+| `rider_scale` | Desired Sam height as a fraction of unmounted size (world space). Mount compensates for parent `visual_size` (engine multiplies attach scales). |
 | `suggest_camera` | `"third"` hints Ark-style third person on mount (C stays free); alias: `prefer_camera` |
 
 Own rideables (`bloom_adult_air`, `beacon_adult_air`, `road_adult`) declare `bones.mount_socket`

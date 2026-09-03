@@ -365,8 +365,14 @@ local function hide_rider(player)
 	})
 end
 
---- Scale Sam to sit proportionally on a large Hashimon (Ark-style visible rider).
-local function scale_rider(player, scale)
+--- Scale Sam to sit proportionally on a Hashimon (Ark-style visible rider).
+---
+--- CRITICAL: Luanti multiplies child visual_size by the parent's when attached
+--- (Irrlicht scene-graph). A stage-13 road_adult has visual_size ≈ 3, so
+--- rider_scale 0.45 without compensation renders Sam at ~1.3× — giant on the
+--- saddle. Divide by the mount's visual_size so `rider_scale` means "fraction
+--- of unmounted Sam height in world space".
+local function scale_rider(player, scale, mount_obj)
 	if type(scale) ~= "number" or scale <= 0 then
 		return
 	end
@@ -376,8 +382,19 @@ local function scale_rider(player, scale)
 	local bx = (type(base) == "table" and base.x) or 1
 	local by = (type(base) == "table" and base.y) or bx
 	local bz = (type(base) == "table" and base.z) or bx
+
+	local parent_vs = 1
+	if mount_obj and mount_obj.get_properties then
+		local mp = mount_obj:get_properties()
+		local pvs = mp and mp.visual_size
+		if type(pvs) == "table" and type(pvs.x) == "number" and pvs.x > 0.001 then
+			parent_vs = pvs.x
+		end
+	end
+	local factor = scale / parent_vs
+
 	player:set_properties({
-		visual_size = { x = bx * scale, y = by * scale, z = bz * scale },
+		visual_size = { x = bx * factor, y = by * factor, z = bz * factor },
 	})
 end
 
@@ -506,7 +523,7 @@ function hashimon.mount(player, mount_obj)
 	if view.hide_rider then
 		hide_rider(player)
 	elseif view.rider_scale then
-		scale_rider(player, view.rider_scale)
+		scale_rider(player, view.rider_scale, mount_obj)
 	end
 	unlock_camera(player)
 
@@ -575,6 +592,11 @@ function hashimon.apply_mount_view_patch(player, patch)
 	end
 	player:set_eye_offset(view.eye_first, view.eye_third)
 	set_rider_animation(player, "sit")
+	if view.hide_rider then
+		hide_rider(player)
+	elseif view.rider_scale then
+		scale_rider(player, view.rider_scale, mount_obj)
+	end
 	return true, view
 end
 

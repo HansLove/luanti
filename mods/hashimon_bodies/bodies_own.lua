@@ -157,7 +157,7 @@ hashimon_bodies.register_creatura_body({
 		eye_third = { x = 0, y = 12, z = -5 },
 		hide_rider = false,
 		forced_visible = true,
-		rider_scale = 0.45,
+		rider_scale = 0.4,
 		suggest_camera = "third",
 	},
 })
