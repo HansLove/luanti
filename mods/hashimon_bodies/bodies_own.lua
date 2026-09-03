@@ -76,7 +76,7 @@ hashimon_bodies.register_creatura_body({
 	},
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.35, height = 0.6 },
+	hitbox = { width = 0.52, height = 0.90 },
 	mesh_height = 3.62,
 	makes_footstep_sound = true,
 })
@@ -102,7 +102,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.30, height = 0.50 },
+	hitbox = { width = 0.45, height = 0.75 },
 	mesh_height = 4.98,
 	makes_footstep_sound = true,
 })
@@ -122,7 +122,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.25, height = 0.45 },
+	hitbox = { width = 0.38, height = 0.68 },
 	mesh_height = 4.37,
 	makes_footstep_sound = true,
 })
@@ -131,8 +131,10 @@ hashimon_bodies.register_creatura_body({
 -- EQUINE — adulto propio. Etapa B del linaje Road.
 --
 -- Sustituye al caballo MIT (`equine_horse`) en el peldaño desarrollado.
--- GLB: adult-road.blend → glb_for_luanti.py --yaw 180 --expect-frames 110
--- (idle 1–30, walk 41–70, run 81–110). Socket.Mount hijo de Torso.
+-- GLB: adult-road-2.blend → glb_for_luanti.py --yaw 180 --expect-frames 110
+-- (idle 1–30, walk 41–70, run 81–110). Socket.Mount hijo de Torso, calibrado
+-- en Blender para el jinete — seat ≈ {0,0,0}; rider_scale sigue compensando
+-- la multiplicación de visual_size del motor al attach.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "road_adult",
@@ -145,20 +147,18 @@ hashimon_bodies.register_creatura_body({
 		mount_socket = "Socket.Mount" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
 	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
-	-- Hitbox ≈ caballo MIT (1.95): a 1.20 el mesh se ve de juguete junto a Sam.
-	hitbox = { width = 0.85, height = 1.95 },
+	hitbox = { width = 0.75, height = 1.60 },
 	mesh_height = 10.21,
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
-		-- Socket.Mount quedó bajo el lomo; +Y sube a Sam a la silla (×10).
-		seat = { x = 0, y = 12, z = 0 },
+		seat = { x = 0, y = 0, z = 0 },
 		rot = { x = 0, y = 180, z = 0 },
-		eye_first = { x = 0, y = 14, z = 2 },
+		eye_first = { x = 0, y = 12, z = 2 },
 		eye_third = { x = 0, y = 12, z = -5 },
 		hide_rider = false,
 		forced_visible = true,
-		rider_scale = 0.4,
+		rider_scale = 0.45,
 		suggest_camera = "third",
 	},
 })
@@ -186,7 +186,7 @@ hashimon_bodies.register_creatura_body({
 		limb_m_l = "Limb.M.L", limb_m_r = "Limb.M.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 29 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.19, height = 0.35 },
+	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 6.77,
 	makes_footstep_sound = true,
 })
@@ -213,7 +213,7 @@ hashimon_bodies.register_creatura_body({
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.30, height = 0.35 },
+	hitbox = { width = 0.45, height = 0.55 },
 	mesh_height = 11.40,
 	makes_footstep_sound = false,
 })
@@ -236,7 +236,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.30, height = 0.35 },
+	hitbox = { width = 0.45, height = 0.55 },
 	mesh_height = 2.31,
 	makes_footstep_sound = true,
 })
@@ -267,13 +267,16 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.32, height = 0.55 },
+	hitbox = { width = 0.48, height = 0.83 },
 	mesh_height = 14.00,
 	makes_footstep_sound = true,
 })
 
 -- ---------------------------------------------------------------------------
 -- Etapa A de los cinco linajes que aún vestían adultos pequeños.
+--
+-- Hitbox de bebés: mínimo ~0.55 de alto (×~1.5 vs la primera pasada). Por debajo
+-- de eso el mesh queda inapuntabile / imposible de cargar a stage 1.
 --
 -- Los rigs llegaron con nombres genéricos (el lobo con CERO huesos del
 -- estándar), así que el mapeo se dedujo de la jerarquía: el hueso más alto y
@@ -291,7 +294,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.20, height = 0.30 },
+	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 3.16,
 	makes_footstep_sound = true,
 })
@@ -305,7 +308,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.18, height = 0.28 },
+	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 7.18,
 	makes_footstep_sound = true,
 })
@@ -323,7 +326,7 @@ hashimon_bodies.register_creatura_body({
 	-- Un polluelo NO vuela. Es la etapa A de Beacon, el único linaje con `fly`
 	-- verificado en B y C: que la cría no lo tenga es la progresión, no una carencia.
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.16, height = 0.25 },
+	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 7.43,
 	makes_footstep_sound = true,
 })
@@ -337,7 +340,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.20, height = 0.32 },
+	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 5.00,
 	makes_footstep_sound = true,
 })
@@ -354,7 +357,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", fin_t = "Fin.T" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = true, mount = false },
-	hitbox = { width = 0.25, height = 0.35 },
+	hitbox = { width = 0.38, height = 0.55 },
 	mesh_height = 4.02,
 	makes_footstep_sound = false,
 })
@@ -414,7 +417,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.20, height = 0.35 },
+	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 0.71,
 	makes_footstep_sound = false,
 })
