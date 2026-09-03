@@ -151,7 +151,8 @@ hashimon_bodies.register_creatura_body({
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
-		seat = { x = 0, y = -2, z = 0 },
+		-- Socket.Mount quedó bajo el lomo; +Y sube a Sam a la silla (×10).
+		seat = { x = 0, y = 12, z = 0 },
 		rot = { x = 0, y = 180, z = 0 },
 		eye_first = { x = 0, y = 14, z = 2 },
 		eye_third = { x = 0, y = 12, z = -5 },
