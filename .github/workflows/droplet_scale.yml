@@ -79,8 +79,11 @@ jobs:
           droplet=$(doctl compute droplet get "$DROPLET_ID" --output json)
           current_size=$(jq -r '.[0].size_slug' <<< "$droplet")
           current_disk=$(jq -r '.[0].disk' <<< "$droplet")
+          # `tags[]?` rather than `tags[]`: doctl marshals a Go nil slice as
+          # `null`, not `[]`, so an untagged droplet would make a bare iteration
+          # abort with "Cannot iterate over null".
           existing_tag=$(jq -r --arg p "$TAG_PREFIX" \
-            '.[0].tags[] | select(startswith($p))' <<< "$droplet" | head -1)
+            '.[0].tags[]? | select(startswith($p))' <<< "$droplet" | head -1)
           now=$(date -u +%s)
 
           echo "Current size: $current_size (disk ${current_disk}GB)"
