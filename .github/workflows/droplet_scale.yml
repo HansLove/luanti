@@ -1,0 +1,274 @@
+---
+name: droplet_scale
+
+# Temporarily raises the droplet's CPU/RAM for a high-demand window, then puts it
+# back on its own. `up` is dispatched by hand with a return date; that date is
+# stored as a tag on the droplet itself, and the hourly schedule below is what
+# actually scales back down once it expires.
+#
+# The scale-down CANNOT run from inside the droplet: DigitalOcean requires the
+# droplet to be powered off before a resize, so a local cron would kill itself
+# mid-operation and never come back. It has to be driven from outside.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "up = scale to burst size. down = return to default now (escape hatch)."
+        required: true
+        default: up
+        type: choice
+        options:
+          - up
+          - down
+      until:
+        description: "Only for `up`. Return date as YYYY-MM-DDTHH:MM, in America/Mexico_City."
+        required: false
+        type: string
+      dry_run:
+        description: "Print the plan and exit without touching anything."
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # Hourly. Almost every run is a no-op that finds no tag and exits.
+    # Two GitHub caveats, both harmless for overnight scale-downs: scheduled
+    # workflows are disabled after 60 days without repo activity, and cron can
+    # fire late under load.
+    - cron: '0 * * * *'
+
+env:
+  DROPLET_ID: "592182663"
+  DEFAULT_SIZE: s-2vcpu-2gb
+  BURST_SIZE: s-4vcpu-8gb
+  TAG_PREFIX: scale-down-at-
+  # A typo in the year must not cost months of a $48/mo droplet.
+  MAX_BURST_DAYS: "7"
+  SCALE_TZ: America/Mexico_City
+
+permissions:
+  contents: read
+
+# Same literal group as deploy.yml and deploy_mods.yml. A resize powers the
+# droplet off, so a deploy landing mid-resize would fail; the default
+# cancel-in-progress: false makes them queue instead.
+concurrency: deploy
+
+jobs:
+  scale:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_API_TOKEN }}
+
+      # Reads current state and decides everything up front, so the mutating
+      # steps below have a single code path regardless of direction.
+      - name: Resolve intent
+        id: intent
+        env:
+          EVENT: ${{ github.event_name }}
+          # Empty on a schedule trigger. Passed through env rather than
+          # interpolated into the script, so a crafted input cannot inject shell.
+          ACTION: ${{ inputs.action }}
+          UNTIL: ${{ inputs.until }}
+        run: |
+          set -euo pipefail
+
+          droplet=$(doctl compute droplet get "$DROPLET_ID" --output json)
+          current_size=$(jq -r '.[0].size_slug' <<< "$droplet")
+          current_disk=$(jq -r '.[0].disk' <<< "$droplet")
+          # `tags[]?` rather than `tags[]`: doctl marshals a Go nil slice as
+          # `null`, not `[]`, so an untagged droplet would make a bare iteration
+          # abort with "Cannot iterate over null".
+          existing_tag=$(jq -r --arg p "$TAG_PREFIX" \
+            '.[0].tags[]? | select(startswith($p))' <<< "$droplet" | head -1)
+          now=$(date -u +%s)
+
+          echo "Current size: $current_size (disk ${current_disk}GB)"
+          echo "Existing scale-down tag: ${existing_tag:-<none>}"
+
+          action="$ACTION"
+          if [ "$EVENT" = "schedule" ]; then
+            action=down
+            if [ -z "$existing_tag" ]; then
+              echo "No scale-down tag set; nothing to do."
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            deadline="${existing_tag#"$TAG_PREFIX"}"
+            if [ "$now" -lt "$deadline" ]; then
+              echo "Scale-down due at $(date -u -d "@$deadline") UTC, not yet."
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          tag_to_set=""
+          if [ "$action" = "up" ]; then
+            target="$BURST_SIZE"
+            if [ -z "$UNTIL" ]; then
+              echo '::error::`until` is required when action is `up`.'
+              exit 1
+            fi
+            if ! deadline=$(TZ="$SCALE_TZ" date -d "$UNTIL" +%s 2>/dev/null); then
+              echo "::error::Could not parse '$UNTIL'. Expected YYYY-MM-DDTHH:MM."
+              exit 1
+            fi
+            if [ "$deadline" -le "$now" ]; then
+              echo "::error::Return date '$UNTIL' is in the past."
+              exit 1
+            fi
+            max_deadline=$(( now + MAX_BURST_DAYS * 86400 ))
+            if [ "$deadline" -gt "$max_deadline" ]; then
+              echo "::error::Return date is more than $MAX_BURST_DAYS days out."
+              exit 1
+            fi
+            tag_to_set="${TAG_PREFIX}${deadline}"
+          else
+            target="$DEFAULT_SIZE"
+          fi
+
+          # The resize must never touch the disk: DigitalOcean can grow a disk
+          # but never shrink one, so a single disk resize would make the change
+          # permanent. That is why --resize-disk is never passed below, and why
+          # the target plan's boot disk has to be >= the current one.
+          target_disk=$(doctl compute size list --output json \
+            | jq -r --arg t "$target" '.[] | select(.slug == $t and .available) | .disk')
+          if [ -z "$target_disk" ]; then
+            echo "::error::Size '$target' not found or unavailable."
+            exit 1
+          fi
+          if [ "$target_disk" -lt "$current_disk" ]; then
+            echo "::error::'$target' has a ${target_disk}GB disk, smaller than the current ${current_disk}GB."
+            exit 1
+          fi
+
+          {
+            echo "proceed=true"
+            echo "action=$action"
+            echo "target=$target"
+            echo "current=$current_size"
+            echo "resize_needed=$([ "$current_size" != "$target" ] && echo true || echo false)"
+            echo "tag_to_set=$tag_to_set"
+            echo "tag_to_clear=$existing_tag"
+            echo "deadline=${deadline:-}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dry run summary
+        if: steps.intent.outputs.proceed == 'true' && inputs.dry_run
+        env:
+          ACTION: ${{ steps.intent.outputs.action }}
+          CURRENT: ${{ steps.intent.outputs.current }}
+          TARGET: ${{ steps.intent.outputs.target }}
+          RESIZE_NEEDED: ${{ steps.intent.outputs.resize_needed }}
+          TAG_TO_SET: ${{ steps.intent.outputs.tag_to_set }}
+          TAG_TO_CLEAR: ${{ steps.intent.outputs.tag_to_clear }}
+          DEADLINE: ${{ steps.intent.outputs.deadline }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Dry run — nothing was changed"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Action | \`$ACTION\` |"
+            echo "| Current size | \`$CURRENT\` |"
+            echo "| Target size | \`$TARGET\` |"
+            echo "| Resize needed | $RESIZE_NEEDED |"
+            echo "| Tag to set | \`${TAG_TO_SET:-<none>}\` |"
+            echo "| Tag to clear | \`${TAG_TO_CLEAR:-<none>}\` |"
+            # Trailing `|| true`: a bare test as the block's last command would
+            # return 1 and fail the step under `set -e` whenever DEADLINE is empty.
+            [ -n "$DEADLINE" ] && echo "| Returns at | $(TZ="$SCALE_TZ" date -d "@$DEADLINE") |" || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Tagging happens BEFORE the resize on purpose. If the resize then fails,
+      # the hourly job finds a tag on a droplet already at the default size and
+      # no-ops harmlessly. The opposite order risks a successful resize with no
+      # tag, which would leave the droplet at burst price with no way back.
+      - name: Record return date
+        if: steps.intent.outputs.proceed == 'true' && !inputs.dry_run && steps.intent.outputs.tag_to_set != ''
+        env:
+          TAG_TO_SET: ${{ steps.intent.outputs.tag_to_set }}
+          TAG_TO_CLEAR: ${{ steps.intent.outputs.tag_to_clear }}
+        run: |
+          set -euo pipefail
+          doctl compute tag create "$TAG_TO_SET" || true
+          doctl compute droplet tag "$DROPLET_ID" --tag-name "$TAG_TO_SET"
+          # Re-dispatching `up` with a new date extends the burst; drop the old tag.
+          if [ -n "$TAG_TO_CLEAR" ] && [ "$TAG_TO_CLEAR" != "$TAG_TO_SET" ]; then
+            doctl compute droplet untag "$DROPLET_ID" --tag-name "$TAG_TO_CLEAR" || true
+            doctl compute tag delete "$TAG_TO_CLEAR" --force || true
+          fi
+
+      - name: Resize
+        if: steps.intent.outputs.proceed == 'true' && !inputs.dry_run && steps.intent.outputs.resize_needed == 'true'
+        env:
+          TARGET: ${{ steps.intent.outputs.target }}
+        run: |
+          set -euo pipefail
+          doctl compute droplet-action power-off "$DROPLET_ID" --wait
+          # No --resize-disk: it defaults to false, which is what keeps this reversible.
+          doctl compute droplet-action resize "$DROPLET_ID" --size-slug "$TARGET" --wait
+          doctl compute droplet-action power-on "$DROPLET_ID" --wait
+
+      # A resize that leaves the game down is the failure that actually matters,
+      # so this gates the run rather than just reporting.
+      - name: Verify services are back
+        if: steps.intent.outputs.proceed == 'true' && !inputs.dry_run && steps.intent.outputs.resize_needed == 'true'
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          SSH_OPTS=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
+
+          for i in $(seq 1 30); do
+            if ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" \
+              'systemctl is-active --quiet luanti-server hashimon-server hashimon-postgres'; then
+              echo "All units active after $((i * 10))s."
+              exit 0
+            fi
+            echo "Attempt $i: not ready yet."
+            sleep 10
+          done
+          echo "::error::Units did not come back within 5 minutes."
+          exit 1
+
+      - name: Clear return date
+        if: steps.intent.outputs.proceed == 'true' && !inputs.dry_run && steps.intent.outputs.action == 'down' && steps.intent.outputs.tag_to_clear != ''
+        env:
+          TAG_TO_CLEAR: ${{ steps.intent.outputs.tag_to_clear }}
+        run: |
+          set -euo pipefail
+          doctl compute droplet untag "$DROPLET_ID" --tag-name "$TAG_TO_CLEAR" || true
+          doctl compute tag delete "$TAG_TO_CLEAR" --force || true
+
+      - name: Summary
+        if: steps.intent.outputs.proceed == 'true' && !inputs.dry_run
+        env:
+          ACTION: ${{ steps.intent.outputs.action }}
+          CURRENT: ${{ steps.intent.outputs.current }}
+          TARGET: ${{ steps.intent.outputs.target }}
+          RESIZE_NEEDED: ${{ steps.intent.outputs.resize_needed }}
+          DEADLINE: ${{ steps.intent.outputs.deadline }}
+        run: |
+          set -euo pipefail
+          {
+            if [ "$RESIZE_NEEDED" = "true" ]; then
+              echo "## Scaled \`$ACTION\`: \`$CURRENT\` to \`$TARGET\`"
+            else
+              echo "## Already at \`$TARGET\` — no resize performed"
+            fi
+            echo ""
+            if [ "$ACTION" = "up" ] && [ -n "$DEADLINE" ]; then
+              echo "Returns to \`$DEFAULT_SIZE\` after **$(TZ="$SCALE_TZ" date -d "@$DEADLINE")**"
+              echo "(checked hourly, so the actual return lands within the following hour)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
