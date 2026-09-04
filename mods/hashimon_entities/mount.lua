@@ -44,7 +44,13 @@ hashimon.GENESIS_MOBILITY = {
 		mode = "fly",
 		cruise = 7,
 		fly_boost = 3,
-		hint = "Montado (Aire) — WASD, espacio subir, sneak bajar, sprint hyper, click derecho para bajar.",
+		skyrocket_up = 80,
+		skyrocket_max_t = 3.0,
+		skyrocket_cd = 8.0,
+		dive_down = 80,
+		dive_max_t = 3.0,
+		dive_cd = 8.0,
+		hint = "Montado (Aire) — WASD; Sprint = hyper; Space+Sprint = cohete; Sneak+Sprint = picada meteorito (impacto = boom); click derecho para bajar.",
 	},
 	electrico = {
 		id = "electrico",
@@ -52,7 +58,9 @@ hashimon.GENESIS_MOBILITY = {
 		cruise = 14,
 		sprint = 22,
 		jump = JUMP_DEFAULT,
-		hint = "Montado (Eléctrico) — WASD, sprint = boost de distancia, click derecho para bajar.",
+		arc_bolt = true, -- Jump+Sprint = parabolic thunder → blink on land
+		arc_bolt_cd = 2.5,
+		hint = "Montado (Eléctrico) — WASD; Sprint = velocidad; Salto+Sprint = rayo al cielo (blink al aterrizar); mira arriba/horizonte; click derecho para bajar.",
 	},
 	["eléctrico"] = nil, -- filled below as alias
 	fuego = {
@@ -454,10 +462,69 @@ local function clear_mount_runtime(ent)
 	ent._fire_fx_t = nil
 	ent._fire_propelling = nil
 	ent._air_fx_t = nil
+	ent._jump_was_down = nil
+	ent._arc_bolt_obj = nil
+	ent._arc_bolt_look = nil
+	ent._arc_bolt_surge_t = nil
+	ent._mount_run_boost = nil
+	ent._arc_dash_cd = nil
+	ent._arc_dash_hint_sent = nil
+	ent._arc_dash_glow_t = nil
+	if ent._arc_glow_applied then
+		local restore = ent._pre_mount_glow or 0
+		ent.object:set_properties({ glow = restore })
+		ent._arc_glow_applied = nil
+	end
+	ent._skyrocket_cd = nil
+	ent._skyrocket_t = nil
+	ent._skyrocket_active = nil
+	ent._skyrocket_start_y = nil
+	ent._dive_cd = nil
+	ent._dive_t = nil
+	ent._dive_active = nil
+	ent._dive_start_y = nil
+	ent._meteor_armed = nil
+	ent._meteor_peak = nil
 	ent.mount_speed = nil
+	ent._anim_fly_hold = nil
+	-- Restore Creatura AI / gravity that we suspended while ridden.
+	if ent._pre_mount_utility_stack then
+		ent.utility_stack = ent._pre_mount_utility_stack
+		ent._pre_mount_utility_stack = nil
+	end
+	if ent.set_gravity then
+		ent:set_gravity(-9.8)
+	end
 	if ent._pre_mount_acc then
 		ent.object:set_acceleration(ent._pre_mount_acc)
 		ent._pre_mount_acc = nil
+	end
+end
+
+--- Creatura's `_physics` re-applies `_movement_data.gravity` every tick and can
+--- run idle/follow actions before `step_func`. That fights fly mounts (accel -9.8
+--- + halt) and causes a visible "tic". Suspend AI and zero Creatura gravity.
+local function suspend_creatura_while_mounted(ent, can_fly)
+	if not ent then
+		return
+	end
+	if not ent._pre_mount_utility_stack then
+		ent._pre_mount_utility_stack = ent.utility_stack
+	end
+	ent.utility_stack = {}
+	if ent.clear_utility then
+		ent:clear_utility()
+	end
+	if ent.clear_action then
+		ent:clear_action()
+	end
+	if ent.halt then
+		ent:halt()
+	end
+	if can_fly and ent.set_gravity then
+		ent:set_gravity(0)
+	elseif ent.set_gravity then
+		ent:set_gravity(-9.8)
 	end
 end
 
@@ -493,6 +560,25 @@ function hashimon.mount(player, mount_obj)
 	ent._fire_jumped = false
 	ent._fire_fx_t = 0
 	ent._fire_propelling = false
+	ent._jump_was_down = false
+	ent._arc_bolt_obj = nil
+	ent._arc_bolt_look = nil
+	ent._arc_bolt_surge_t = 0
+	ent._mount_run_boost = false
+	ent._arc_dash_cd = 0
+	ent._arc_dash_hint_sent = false
+	ent._arc_dash_glow_t = 0
+	ent._arc_glow_applied = false
+	ent._skyrocket_cd = 0
+	ent._skyrocket_t = 0
+	ent._skyrocket_active = false
+	ent._skyrocket_start_y = nil
+	ent._dive_cd = 0
+	ent._dive_t = 0
+	ent._dive_active = false
+	ent._dive_start_y = nil
+	ent._meteor_armed = false
+	ent._meteor_peak = 0
 	ent._water_hyper = false
 	ent._water_fx_t = 0
 	ent._water_glow_on = false
@@ -517,6 +603,7 @@ function hashimon.mount(player, mount_obj)
 		player:set_physics_override({ speed = 0, jump = 0 })
 		ent.object:set_acceleration({ x = 0, y = GRAVITY, z = 0 })
 	end
+	suspend_creatura_while_mounted(ent, can_fly)
 	player:set_eye_offset(view.eye_first, view.eye_third)
 	set_rider_attached(player, true)
 	set_rider_animation(player, "sit")
@@ -619,6 +706,9 @@ function hashimon.dismount(player)
 	if mount_obj then
 		local ent = mount_obj:get_luaentity()
 		if ent and ent.rider == name then
+			if hashimon.clear_arc_bolt then
+				hashimon.clear_arc_bolt(name)
+			end
 			ent.rider = nil
 			ent._mount_view = nil
 			clear_mount_runtime(ent)
@@ -865,6 +955,207 @@ local function emit_fire_trail(pos, dir)
 		texture = "default_mese_crystal_fragment.png^[colorize:#FDE68A:140",
 		glow = 14,
 	})
+end
+
+local function emit_electric_arc_trail(from, to)
+	local mid = {
+		x = (from.x + to.x) * 0.5,
+		y = (from.y + to.y) * 0.5 + 0.4,
+		z = (from.z + to.z) * 0.5,
+	}
+	local dx, dy, dz = to.x - from.x, to.y - from.y, to.z - from.z
+	core.add_particlespawner({
+		amount = 28,
+		time = 0.12,
+		minpos = {
+			x = math.min(from.x, to.x) - 0.3,
+			y = math.min(from.y, to.y) - 0.2,
+			z = math.min(from.z, to.z) - 0.3,
+		},
+		maxpos = {
+			x = math.max(from.x, to.x) + 0.3,
+			y = math.max(from.y, to.y) + 1.2,
+			z = math.max(from.z, to.z) + 0.3,
+		},
+		minvel = { x = -0.5, y = -0.2, z = -0.5 },
+		maxvel = { x = 0.5, y = 1.2, z = 0.5 },
+		minexptime = 0.15,
+		maxexptime = 0.4,
+		minsize = 1.2,
+		maxsize = 3.0,
+		texture = "default_mese_crystal_fragment.png^[colorize:#FDE047:170",
+		glow = 14,
+	})
+	core.add_particlespawner({
+		amount = 12,
+		time = 0.08,
+		minpos = { x = mid.x - 0.4, y = mid.y - 0.3, z = mid.z - 0.4 },
+		maxpos = { x = mid.x + 0.4, y = mid.y + 0.8, z = mid.z + 0.4 },
+		minvel = { x = dx * 0.4 - 0.3, y = dy * 0.4, z = dz * 0.4 - 0.3 },
+		maxvel = { x = dx * 1.2 + 0.3, y = dy * 1.2 + 0.5, z = dz * 1.2 + 0.3 },
+		minexptime = 0.1,
+		maxexptime = 0.28,
+		minsize = 1.5,
+		maxsize = 3.5,
+		texture = "default_mese_crystal_fragment.png^[colorize:#E0F2FE:160",
+		glow = 14,
+	})
+end
+
+--- Ghost / speed-reflection at a recent dash position.
+local function emit_electric_afterimage(pos)
+	core.add_particlespawner({
+		amount = 8,
+		time = 0.06,
+		minpos = { x = pos.x - 0.5, y = pos.y - 0.1, z = pos.z - 0.5 },
+		maxpos = { x = pos.x + 0.5, y = pos.y + 1.4, z = pos.z + 0.5 },
+		minvel = { x = -0.2, y = 0.1, z = -0.2 },
+		maxvel = { x = 0.2, y = 0.6, z = 0.2 },
+		minexptime = 0.25,
+		maxexptime = 0.55,
+		minsize = 3.0,
+		maxsize = 6.0,
+		texture = "default_mese_crystal_fragment.png^[colorize:#FDE047:200",
+		glow = 14,
+	})
+	core.add_particlespawner({
+		amount = 4,
+		time = 0.05,
+		minpos = { x = pos.x - 0.3, y = pos.y + 0.2, z = pos.z - 0.3 },
+		maxpos = { x = pos.x + 0.3, y = pos.y + 1.0, z = pos.z + 0.3 },
+		minvel = { x = 0, y = 0.2, z = 0 },
+		maxvel = { x = 0, y = 0.8, z = 0 },
+		minexptime = 0.15,
+		maxexptime = 0.35,
+		minsize = 2.0,
+		maxsize = 4.0,
+		texture = "default_mese_crystal_fragment.png^[colorize:#E0F2FE:180",
+		glow = 14,
+	})
+end
+
+local function emit_skyrocket_burst(pos)
+	core.add_particlespawner({
+		amount = 30,
+		time = 0.1,
+		minpos = { x = pos.x - 0.7, y = pos.y - 0.4, z = pos.z - 0.7 },
+		maxpos = { x = pos.x + 0.7, y = pos.y + 0.6, z = pos.z + 0.7 },
+		minvel = { x = -2, y = -8, z = -2 },
+		maxvel = { x = 2, y = -2, z = 2 },
+		minexptime = 0.2,
+		maxexptime = 0.55,
+		minsize = 1.4,
+		maxsize = 3.8,
+		texture = "default_mese_crystal_fragment.png^[colorize:#E0F2FE:150",
+		glow = 12,
+	})
+end
+
+--- Dive: wind streaks rushing upward past the mount.
+local function emit_dive_burst(pos)
+	core.add_particlespawner({
+		amount = 30,
+		time = 0.1,
+		minpos = { x = pos.x - 0.7, y = pos.y - 0.6, z = pos.z - 0.7 },
+		maxpos = { x = pos.x + 0.7, y = pos.y + 0.4, z = pos.z + 0.7 },
+		minvel = { x = -2, y = 2, z = -2 },
+		maxvel = { x = 2, y = 10, z = 2 },
+		minexptime = 0.2,
+		maxexptime = 0.55,
+		minsize = 1.4,
+		maxsize = 3.8,
+		texture = "default_mese_crystal_fragment.png^[colorize:#93C5FD:160",
+		glow = 12,
+	})
+end
+
+local ARC_DASH_GLOW = 14
+
+local function set_arc_dash_glow(self, active)
+	if not self or not self.object then
+		return
+	end
+	if active then
+		if not self._arc_glow_applied then
+			if self._pre_mount_glow == nil then
+				local props = self.object:get_properties()
+				self._pre_mount_glow = (props and props.glow) or 0
+			end
+			self.object:set_properties({ glow = ARC_DASH_GLOW })
+			self._arc_glow_applied = true
+		end
+	elseif self._arc_glow_applied then
+		local restore = self._pre_mount_glow or 0
+		-- Don't clobber active water biolum.
+		if self._water_glow_applied and self._water_glow_level then
+			self.object:set_properties({ glow = self._water_glow_level })
+		else
+			self.object:set_properties({ glow = restore })
+		end
+		self._arc_glow_applied = false
+	end
+end
+
+local function node_is_walkable(pos)
+	local node = core.get_node(pos)
+	local def = core.registered_nodes[node.name]
+	return def and def.walkable == true
+end
+
+--- True if solid ground/wall is within `depth` nodes below `pos` (dive impact).
+local function mount_solid_below(pos, depth)
+	depth = depth or 2
+	local x = math.floor(pos.x + 0.5)
+	local z = math.floor(pos.z + 0.5)
+	local y0 = math.floor(pos.y + 0.5)
+	for dy = 0, depth do
+		if node_is_walkable({ x = x, y = y0 - dy, z = z }) then
+			return true
+		end
+	end
+	return false
+end
+
+local function protect_rider_brief(player, seconds)
+	if not player or not player.get_player_name then
+		return
+	end
+	local props = player:get_properties()
+	local saved = props and props.armor_groups
+	player:set_armor_groups({ immortal = 1, fleshy = 100 })
+	local name = player:get_player_name()
+	core.after(seconds or 0.75, function()
+		local p = core.get_player_by_name(name)
+		if p then
+			p:set_armor_groups(saved or { fleshy = 100 })
+		end
+	end)
+end
+
+--- Last free air along look_dir up to `dist` (legacy helper).
+local function find_arc_dash_pos(from, look, dist)
+	local last = { x = from.x, y = from.y, z = from.z }
+	local steps = math.max(4, math.floor(dist * 2 + 0.5))
+	for i = 1, steps do
+		local t = (i / steps) * dist
+		local p = {
+			x = from.x + look.x * t,
+			y = from.y + look.y * t,
+			z = from.z + look.z * t,
+		}
+		local foot = {
+			x = math.floor(p.x + 0.5),
+			y = math.floor(p.y + 0.5),
+			z = math.floor(p.z + 0.5),
+		}
+		local head = { x = foot.x, y = foot.y + 1, z = foot.z }
+		local belly = { x = foot.x, y = foot.y + 2, z = foot.z }
+		if node_is_walkable(foot) or node_is_walkable(head) or node_is_walkable(belly) then
+			break
+		end
+		last = p
+	end
+	return last
 end
 
 local AIR_WIND_TEX = "default_mese_crystal_fragment.png^[colorize:#BFDBFE:100"
@@ -1154,9 +1445,11 @@ function hashimon.set_mount_element_override(ent, element)
 			if profile.mode == "fly" then
 				rider:set_physics_override({ speed = 0, jump = 0, gravity = 0 })
 				ent.object:set_acceleration({ x = 0, y = 0, z = 0 })
+				suspend_creatura_while_mounted(ent, true)
 			else
 				rider:set_physics_override({ speed = 0, jump = 0, gravity = 1 })
 				ent.object:set_acceleration({ x = 0, y = GRAVITY, z = 0 })
+				suspend_creatura_while_mounted(ent, false)
 			end
 		end
 	end
@@ -1186,6 +1479,11 @@ function hashimon.step_mounted(self, dtime)
 
 	local yaw = rider_obj:get_look_horizontal()
 	self.object:set_yaw(yaw)
+
+	-- Keep Creatura gravity in sync: its `_physics` writes accel from this every tick.
+	if (self._mount_fly or (profile and profile.mode == "fly")) and self.set_gravity then
+		self:set_gravity(0)
+	end
 
 	local control = rider_obj:get_player_control()
 	local dir = core.yaw_to_dir(yaw)
@@ -1232,9 +1530,52 @@ function hashimon.step_mounted(self, dtime)
 		set_water_biolum(self, false, false)
 	end
 
-	-- --- Electric: sustained sprint ---
+	-- --- Electric: sustained sprint (run_boost anim when available) ---
 	if mode == "ground" and profile.sprint and control.aux1 then
 		speed = profile.sprint * dna_speed_mult(creature)
+		self._mount_run_boost = true
+	else
+		self._mount_run_boost = false
+	end
+
+	-- Tick shared mobility cooldowns.
+	self._arc_dash_cd = math.max(0, (self._arc_dash_cd or 0) - dtime)
+	self._skyrocket_cd = math.max(0, (self._skyrocket_cd or 0) - dtime)
+	self._dive_cd = math.max(0, (self._dive_cd or 0) - dtime)
+
+	-- Bolt blink afterglow / residual surge.
+	if self._arc_dash_glow_t and self._arc_dash_glow_t > 0
+		and not ((self._arc_bolt_surge_t or 0) > 0) then
+		self._arc_dash_glow_t = self._arc_dash_glow_t - dtime
+		if self._arc_dash_glow_t <= 0 then
+			self._arc_dash_glow_t = 0
+			set_arc_dash_glow(self, false)
+		end
+	end
+
+	-- Electric arc bolt: Jump edge + Sprint launches parabolic thunder.
+	local arc_bolted = false
+	if profile.arc_bolt and hashimon.launch_arc_bolt then
+		local jump_edge = control.jump and not self._jump_was_down
+		if jump_edge and control.aux1 and (self._arc_dash_cd or 0) <= 0 then
+			local look = rider_obj:get_look_dir()
+			local ok, err = hashimon.launch_arc_bolt(self, rider_obj, look)
+			if ok then
+				self._arc_dash_cd = profile.arc_bolt_cd or 2.5
+				arc_bolted = true
+				if not self._arc_dash_hint_sent then
+					self._arc_dash_hint_sent = true
+					core.chat_send_player(self.rider,
+						"[Hashimon] Rayo — Salto+Sprint lanza trueno al cielo; blink al aterrizar (CD 2.5s).")
+				end
+			elseif err == "aim_down" then
+				core.chat_send_player(self.rider,
+					"[Hashimon] Mira al horizonte o al cielo para lanzar el rayo.")
+			elseif err == "busy" then
+				-- bolt still in flight
+			end
+		end
+		self._jump_was_down = control.jump and true or false
 	end
 
 	-- --- Fuego: hold aux1 = ground/air propulsion (not flight) ---
@@ -1314,7 +1655,120 @@ function hashimon.step_mounted(self, dtime)
 	end
 
 	if mode == "fly" then
-		if control.jump then
+		-- Skyrocket / Dive: Space+Sprint up, Sneak+Sprint down. Both require Sprint.
+		-- Jump+Sneak together = neither special (soft fly only).
+		-- Dive held long enough arms a meteor strike; ground contact = TNT-like crater.
+		local skyrocket_up = profile.skyrocket_up
+		local dive_down = profile.dive_down or skyrocket_up
+		local both_vert = control.jump and control.sneak
+		local want_rocket = skyrocket_up
+			and self._mount_fly_boost
+			and control.jump
+			and not control.sneak
+			and not both_vert
+		local want_dive = dive_down
+			and self._mount_fly_boost
+			and control.sneak
+			and not control.jump
+			and not both_vert
+
+		local rocket_on = false
+		local dive_on = false
+
+		if want_rocket then
+			if self._skyrocket_active then
+				rocket_on = true
+			elseif (self._skyrocket_cd or 0) <= 0 then
+				self._skyrocket_active = true
+				self._skyrocket_t = 0
+				self._skyrocket_start_y = pos.y
+				rocket_on = true
+				emit_skyrocket_burst(pos)
+			end
+		end
+		if want_dive then
+			if self._dive_active then
+				dive_on = true
+			elseif (self._dive_cd or 0) <= 0 then
+				self._dive_active = true
+				self._dive_t = 0
+				self._dive_start_y = pos.y
+				self._meteor_armed = false
+				self._meteor_peak = 0
+				dive_on = true
+				emit_dive_burst(pos)
+			end
+		end
+
+		if rocket_on then
+			self._skyrocket_t = (self._skyrocket_t or 0) + dtime
+			local gain = pos.y - (self._skyrocket_start_y or pos.y)
+			local max_t = profile.skyrocket_max_t or 3.0
+			if self._skyrocket_t >= max_t or gain >= 250 then
+				self._skyrocket_active = false
+				self._skyrocket_cd = profile.skyrocket_cd or 8.0
+				rocket_on = false
+			end
+		elseif self._skyrocket_active then
+			self._skyrocket_active = false
+			self._skyrocket_cd = profile.skyrocket_cd or 8.0
+		end
+
+		if dive_on then
+			self._dive_t = (self._dive_t or 0) + dtime
+			local drop = (self._dive_start_y or pos.y) - pos.y
+			local max_t = profile.dive_max_t or 3.0
+			local arm_t = hashimon.METEOR_ARM_T or 0.35
+			if self._dive_t >= arm_t then
+				self._meteor_armed = true
+			end
+			if self._dive_t >= max_t or drop >= 250 then
+				self._dive_active = false
+				self._dive_cd = profile.dive_cd or 8.0
+				dive_on = false
+			end
+		elseif self._dive_active then
+			self._dive_active = false
+			self._dive_cd = profile.dive_cd or 8.0
+		end
+
+		local function apply_special_horiz()
+			local h_spd = cruise * math.max(boost * 0.85, 1)
+			if math.abs(forward) < 0.05 then
+				return horizontal_velocity(dir, h_spd, 1)
+			end
+			return horizontal_velocity(dir, h_spd, forward)
+		end
+
+		if rocket_on then
+			vy = skyrocket_up
+			vx, vz = apply_special_horiz()
+			self._air_fx_t = (self._air_fx_t or 0) + dtime
+			if self._air_fx_t >= 0.04 then
+				self._air_fx_t = 0
+				emit_skyrocket_burst(pos)
+				emit_air_hyper_trail(pos, dir)
+				local rider_pos = rider_obj:get_pos()
+				if rider_pos then
+					emit_air_rider_wind(rider_pos, dir)
+				end
+			end
+		elseif dive_on then
+			vy = -(dive_down or 80)
+			vx, vz = apply_special_horiz()
+			local spd = math.sqrt(vx * vx + vy * vy + vz * vz)
+			self._meteor_peak = math.max(self._meteor_peak or 0, spd, -vy)
+			self._air_fx_t = (self._air_fx_t or 0) + dtime
+			if self._air_fx_t >= 0.04 then
+				self._air_fx_t = 0
+				emit_dive_burst(pos)
+				emit_air_hyper_trail(pos, dir)
+				local rider_pos = rider_obj:get_pos()
+				if rider_pos then
+					emit_air_rider_wind(rider_pos, dir)
+				end
+			end
+		elseif control.jump then
 			vy = FLY_UP * boost
 		elseif control.sneak then
 			vy = -FLY_DOWN * boost
@@ -1323,7 +1777,45 @@ function hashimon.step_mounted(self, dtime)
 		else
 			vy = math.max(vy * 0.9, FLY_HOVER)
 		end
-		if self._mount_fly_boost then
+
+		-- Keep peak while armed and still falling after dive budget ends.
+		if self._meteor_armed and not dive_on and vel.y < -12 then
+			local spd = math.sqrt(vx * vx + vy * vy + vz * vz)
+			self._meteor_peak = math.max(self._meteor_peak or 0, spd, -vel.y)
+		elseif self._meteor_armed and not dive_on and vel.y > -8
+			and not mount_solid_below(pos, 2) then
+			-- Soft cancel: left dive and no longer plummeting.
+			self._meteor_armed = false
+			self._meteor_peak = 0
+		end
+
+		-- Direct ground impact → meteor crater (radius scales with peak dive speed).
+		if self._meteor_armed and hashimon.meteor_strike then
+			local look_depth = 2
+			if dive_on or (vel.y and vel.y < -20) then
+				look_depth = math.min(6, 2 + math.floor((self._meteor_peak or 40) * 0.04))
+			end
+			if mount_solid_below(pos, look_depth) then
+				local impact_spd = math.max(self._meteor_peak or 0, -(vy < 0 and vy or vel.y or 0))
+				protect_rider_brief(rider_obj, 0.85)
+				local radius = hashimon.meteor_strike(pos, impact_spd, self.rider)
+				self._meteor_armed = false
+				self._meteor_peak = 0
+				self._dive_active = false
+				self._dive_cd = math.max(self._dive_cd or 0, profile.dive_cd or 8.0)
+				dive_on = false
+				vy = math.min(vy, 8)
+				vx, vz = vx * 0.25, vz * 0.25
+				if radius and radius > 0 then
+					core.chat_send_player(self.rider, string.format(
+						"[Hashimon] Meteorito — impacto %.0f n/s, cráter r=%d.",
+						impact_spd, radius))
+					emit_dive_burst(pos)
+				end
+			end
+		end
+
+		if self._mount_fly_boost and not rocket_on and not dive_on then
 			self._air_fx_t = (self._air_fx_t or 0) + dtime
 			if self._air_fx_t >= 0.07 then
 				self._air_fx_t = 0
@@ -1404,9 +1896,25 @@ function hashimon.step_mounted(self, dtime)
 				end
 			end
 		else
-			if control.jump and on_ground then
+			-- Arc bolt consumes jump+Sprint; plain jump without Sprint.
+			if control.jump and on_ground and not (profile.arc_bolt and control.aux1)
+				and not arc_bolted then
 				vy = jump_v
 			end
+		end
+	end
+
+	-- Short residual after bolt blink lands.
+	if (self._arc_bolt_surge_t or 0) > 0 then
+		self._arc_bolt_surge_t = self._arc_bolt_surge_t - dtime
+		local look = self._arc_bolt_look or dir
+		vx = look.x * 16
+		vz = look.z * 16
+		vy = math.max(vy, look.y * 8, 3)
+		set_arc_dash_glow(self, true)
+		if self._arc_bolt_surge_t <= 0 then
+			self._arc_bolt_surge_t = 0
+			self._arc_dash_glow_t = 0.2
 		end
 	end
 

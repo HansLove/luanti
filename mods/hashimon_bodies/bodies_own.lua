@@ -102,6 +102,7 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
+	carry_view = { slot = "shoulder_r", scale = 0.5 },
 	hitbox = { width = 0.45, height = 0.75 },
 	mesh_height = 4.98,
 	makes_footstep_sound = true,
@@ -164,6 +165,44 @@ hashimon_bodies.register_creatura_body({
 })
 
 -- ---------------------------------------------------------------------------
+-- EQUINE — adulto eléctrico (capa V2). Sustituye `road_adult` solo si el
+-- elemento es eléctrico. Resto de elementos siguen con el universal.
+--
+-- GLB: adult-road-electric.blend → glb_for_luanti.py --yaw 180 --expect-frames 350
+-- --rename Neck.003=Head (el export no traía Head).
+-- Clips: idle 1–30, walk 41–70, run 81–110, run_boost 321–350 (sprint/fase).
+-- ---------------------------------------------------------------------------
+hashimon_bodies.register_creatura_body({
+	id = "road_adult_electric",
+	family = "equine",
+	element = "electrico",
+	replaces = "road_adult",
+	mesh = "hashimon_road_adult_electric.glb",
+	textures = { "hashimon_road_adult_electric.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({
+		idle = 30, walk = 30, run = 30, run_boost = 30,
+	}),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	hitbox = { width = 0.75, height = 1.60 },
+	mesh_height = 14.62,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 12, z = 2 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.45,
+		suggest_camera = "third",
+	},
+})
+
+-- ---------------------------------------------------------------------------
 -- ARTHROPOD — mantis cría. Etapa A de Bloom.
 --
 -- Primer cuerpo hexápodo del catálogo: trae `Limb.M.L/R`, el par medio del
@@ -189,6 +228,12 @@ hashimon_bodies.register_creatura_body({
 	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 6.77,
 	makes_footstep_sound = true,
+	-- Oruga: bufanda (Neck) → gorra (Head). Socket.Perch = contacto artístico.
+	carry_view = {
+		slot = "neck",
+		scale = 0.9,
+		slots = { "neck", "head" },
+	},
 })
 
 -- ---------------------------------------------------------------------------
@@ -331,6 +376,67 @@ hashimon_bodies.register_creatura_body({
 	makes_footstep_sound = true,
 })
 
+-- Beacon ★1 aire: serpiente-bufanda. Socket.Perch = origen; perch_neck @361.
+-- Familia `avian` (línea Beacon): sin patas el proportions omite claves ausentes.
+-- Sustituye al polluelo compartido sólo para elemento aire.
+-- Escala 1:1 con Bob: mismo visual_size_base (2.76). En Blender se posa junto a
+-- Bob ~1.7 m; en juego hitbox ≈ mesh_height×2.76/10 ≈ 0.72 nodos.
+-- NUNCA exportar Bob dentro del GLB del baby (infla AABB y aplasta la malla).
+hashimon_bodies.register_creatura_body({
+	id = "beacon_baby_air",
+	family = "avian",
+	element = "aire",
+	replaces = "beacon_baby",
+	mesh = "hashimon_beacon_baby_air.glb",
+	textures = { "hashimon_beacon_baby_air.png" },
+	-- Sin `Torso` en el GLB: Root ancla la cadena; Tail distal.
+	bones = { head = "Head", neck = "Neck", torso = "Root", tail = "Tail" },
+	animations = hashimon_bodies.anims({
+		idle = 30,
+		walk = 30,
+		perch_neck = 30, -- 361–390
+	}),
+	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
+	hitbox = { width = 0.55, height = 0.72 },
+	mesh_height = 2.60,
+	visual_size_base = 2.76, -- = Bob; carry scale ~1.15 ⇒ un poco más grande en cuello
+	makes_footstep_sound = false,
+	carry_view = {
+		slot = "neck",
+		scale = 1.15,
+		slots = { "neck" },
+		anim_by_slot = { neck = "perch_neck" },
+		-- Calibrado in-game: /hashimon carry seat -0.15 0.5 0.33
+		by_slot = {
+			neck = { seat = { x = -0.15, y = 0.5, z = 0.33 } },
+		},
+	},
+})
+
+-- Beacon ★1 agua: cría singular (pingüino). Sustituye al polluelo sólo en agua.
+-- Tierra / fuego / eléctrico siguen con `beacon_baby` (pajarito compartido).
+-- Carry en hombro (no cuello): sin perch; en Neck el mesh queda dentro de Bob.
+hashimon_bodies.register_creatura_body({
+	id = "beacon_baby_water",
+	family = "avian",
+	element = "agua",
+	replaces = "beacon_baby",
+	mesh = "hashimon_beacon_baby_water.glb",
+	textures = { "hashimon_beacon_baby_water.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
+	capabilities = { walk = true, run = false, fly = false, swim = true, mount = false },
+	hitbox = { width = 0.40, height = 0.70 },
+	mesh_height = 8.09,
+	makes_footstep_sound = true,
+	carry_view = {
+		slot = "shoulder_r",
+		scale = 0.9,
+		slots = { "shoulder_r", "shoulder_l", "back" },
+	},
+})
+
 hashimon_bodies.register_creatura_body({
 	id = "edge_baby",
 	family = "theropod",
@@ -413,13 +519,29 @@ hashimon_bodies.register_creatura_body({
 	textures = { "hashimon_bloom_baby_air.png" },
 	-- Sin patas traseras: una oruga se arrastra. proportions.lua omite las
 	-- claves ausentes sin quejarse.
-	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+	bones = { head = "Head", neck = "Neck", torso = "Torax", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R" },
-	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
+	animations = hashimon_bodies.anims({
+		idle = 30,
+		walk = 30,
+		perch_head = 30,       -- 401–430
+		perch_shoulder = 30,   -- 441–470
+	}),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
 	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 0.71,
 	makes_footstep_sound = false,
+	-- scale = fracción del tamaño EN EL SUELO (ya se compensa el ×Bob).
+	-- ~0.9 ≈ misma presencia que suelto; 0.32 quedaba “piedrita”.
+	carry_view = {
+		slot = "head",
+		scale = 0.9,
+		slots = { "head", "shoulder_r" },
+		anim_by_slot = {
+			head = "perch_head",
+			shoulder_r = "perch_shoulder",
+		},
+	},
 })
 
 hashimon_bodies.register_creatura_body({
@@ -431,14 +553,18 @@ hashimon_bodies.register_creatura_body({
 	textures = { "hashimon_bloom_adult_air.png" },
 	-- Socket.Mount = asiento (hijo de Torso en la silla). Cámara = eye_*; no
 	-- meter el socket en el cráneo. Ver docs/SKELETON_STANDARD_V1.md §3a.
+	-- GLB: adult-bloom-air.glb → expect-frames 310 (fly_dive inclusive).
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
 		wing_l = "Wing.L", wing_r = "Wing.R",
 		mount_socket = "Socket.Mount" },
-	animations = hashimon_bodies.anims({ idle = 30, walk = 30, fly = 30, fly_boost = 30 }),
+	animations = hashimon_bodies.anims({
+		idle = 30, walk = 30, fly = 30, fly_boost = 30,
+		fly_rocket = 30, fly_dive = 30,
+	}),
 	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
 	hitbox = { width = 1.10, height = 2.00 },
-	mesh_height = 7.56,
+	mesh_height = 8.22,
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
@@ -458,8 +584,8 @@ hashimon_bodies.register_creatura_body({
 -- CAPA V2 · BEACON AIRE — el faro adulto.
 --
 -- Sustituye al pteranodonte prestado (GPL) en el camino de un Beacon de aire.
--- GLB: adult-faro-air.blend → glb_for_luanti.py --yaw 180 --expect-frames 230.
--- Socket.Mount hijo de Torso; clips idle/walk/fly/fly_boost (hyper 201–230).
+-- GLB: adult-faro-air.blend → glb_for_luanti.py --yaw 180 --expect-frames 310.
+-- Socket.Mount hijo de Torso; clips idle/walk/fly/fly_boost/fly_rocket/fly_dive.
 --
 -- `contrast` va con el brillo NEGATIVO, al revés que los rescates anteriores.
 -- Su textura salió muy clara (media 0.72) y plana (sd 0.098): el rescate
@@ -479,20 +605,24 @@ hashimon_bodies.register_creatura_body({
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", wing_l = "Wing.L", wing_r = "Wing.R",
 		mount_socket = "Socket.Mount" },
-	animations = hashimon_bodies.anims({ idle = 30, walk = 30, fly = 30, fly_boost = 30 }),
+	animations = hashimon_bodies.anims({
+		idle = 30, walk = 30, fly = 30, fly_boost = 30,
+		fly_rocket = 30, fly_dive = 30,
+	}),
 	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
-	hitbox = { width = 0.70, height = 1.20 },
-	mesh_height = 11.60,
+	-- Adulto montable: antes 1.20 se leía como cría grande; alineado a Bloom aire (~2.0).
+	hitbox = { width = 1.20, height = 2.10 },
+	mesh_height = 22.49,
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
 		seat = { x = 0, y = 0, z = 0 },
 		rot = { x = 0, y = 180, z = 0 },
-		eye_first = { x = 0, y = 20, z = 3 },
+		eye_first = { x = 0, y = 24, z = 4 },
 		eye_third = { x = 0, y = 15, z = -5 },
 		hide_rider = false,
 		forced_visible = true,
-		rider_scale = 0.65,
+		rider_scale = 0.55,
 		suggest_camera = "third",
 	},
 })

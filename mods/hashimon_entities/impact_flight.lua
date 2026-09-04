@@ -432,6 +432,87 @@ core.register_on_punchplayer(function(player, hitter, _time, _tool, dir, damage)
 	hashimon.launch_impact(player, punch_dir, speed)
 end)
 
+hashimon.METEOR_MIN_SPEED = 22
+hashimon.METEOR_MIN_RADIUS = 2
+hashimon.METEOR_MAX_RADIUS = 6
+hashimon.METEOR_ARM_T = 0.35 -- seconds of dive before strike can arm
+
+--- Ground-strike crater for air-mount dive (meteor). `speed` = impact speed (n/s).
+--- Returns radius used, or 0 if skipped (protected / too slow).
+function hashimon.meteor_strike(pos, speed, pname)
+	if not pos or not pname then
+		return 0
+	end
+	speed = clamp(tonumber(speed) or 0, 0, hashimon.IMPACT_MAX_SPEED)
+	if speed < hashimon.METEOR_MIN_SPEED then
+		return 0
+	end
+	if core.is_protected(pos, pname) then
+		return 0
+	end
+
+	-- ~40 n/s → r2, ~80 → r4, ~120+ → r5–6
+	local radius = clamp(math.floor(speed / 25) + 1, hashimon.METEOR_MIN_RADIUS, hashimon.METEOR_MAX_RADIUS)
+
+	local center = {
+		x = pos.x,
+		y = pos.y - 0.5,
+		z = pos.z,
+	}
+	dig_sphere(center, radius, pname)
+	if radius >= 3 then
+		dig_sphere({ x = center.x, y = center.y - 1, z = center.z }, radius - 1, pname)
+	end
+
+	if hashimon._has_tnt and tnt and tnt.boom then
+		tnt.boom(center, {
+			radius = math.max(1, radius),
+			damage_radius = math.max(1, radius),
+			explode_center = true,
+			ignore_protection = false,
+		})
+	else
+		emit_burst(center, radius)
+		fx_boom(center, radius, pname)
+	end
+
+	-- Expansive knockback wave (players + entities). Skip the striking player.
+	local wave_r = radius * 2.5
+	local force = clamp(speed * 0.22, 8, 45)
+	for _, obj in ipairs(core.get_objects_inside_radius(center, wave_r) or {}) do
+		if obj and obj.get_pos then
+			if obj.is_player and obj:is_player() and obj:get_player_name() == pname then
+				-- Rider: immortality is brief; don't fling them out of the crater.
+			else
+				local op = obj:get_pos()
+				if op then
+					local dx = op.x - center.x
+					local dy = op.y - center.y + 0.4
+					local dz = op.z - center.z
+					local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+					if dist > 0.15 and dist < wave_r then
+						local falloff = 1 - (dist / wave_r)
+						local f = force * falloff
+						local inv = 1 / dist
+						local impulse = {
+							x = dx * inv * f,
+							y = math.max(4, dy * inv * f * 0.65 + f * 0.25),
+							z = dz * inv * f,
+						}
+						if obj.add_velocity then
+							obj:add_velocity(impulse)
+						elseif obj.is_player and obj:is_player() and obj.add_player_velocity then
+							obj:add_player_velocity(impulse)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return radius
+end
+
 function hashimon.impact_yeet_command(name, rest)
 	local player = core.get_player_by_name(name)
 	if not player then

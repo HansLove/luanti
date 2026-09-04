@@ -1,5 +1,11 @@
--- Baby carry: attach Hashimon baby (★1) to Sam player skeleton (inverse of mount).
+-- Baby carry: attach Hashimon baby (★1) to the player (inverse of mount).
+-- Bob/Ana: Socket.Carry.* with seat {0,0,0}. Sam fallback: Arm/Head offsets.
 -- Manual: owner right-click near baby. Slots cycle via /hashimon carry next|prev.
+--
+-- FACING PROTOCOL: Bob and babies both export with --yaw 180 (Luanti −Z =
+-- forward). Attaching with rot {0,0,0} leaves the baby facing the opposite way
+-- of Bob. Canonical align is Y=180 so baby Head points the same way as Bob.
+-- Override per body with carry_view.rot / by_slot.rot, or live /hashimon carry rot.
 
 hashimon = hashimon or {}
 
@@ -9,8 +15,55 @@ hashimon._carry_slot_idx = hashimon._carry_slot_idx or {}
 hashimon.CARRY_RANGE = 8
 local BABY_STAGE = hashimon.EVOLVE_STAGE_BABY or 1
 
--- Seat/rot in Luanti set_attach units (×10). Tune with /hashimon carry in-game.
-local CARRY_SLOTS = {
+-- Align baby forward (−Z) with Bob forward on Socket.Carry.*.
+local CARRY_ALIGN_ROT = { x = 0, y = 180, z = 0 }
+
+-- Bob (Hashimon skeleton): sockets authored in Blender — seat stays zero.
+local CARRY_SLOTS_HASHIMON = {
+	{
+		id = "shoulder_r",
+		label = "hombro derecho",
+		bone = "Socket.Carry.Shoulder.R",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = CARRY_ALIGN_ROT,
+		scale = 0.5,
+	},
+	{
+		id = "shoulder_l",
+		label = "hombro izquierdo",
+		bone = "Socket.Carry.Shoulder.L",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = CARRY_ALIGN_ROT,
+		scale = 0.5,
+	},
+	{
+		id = "head",
+		label = "cabeza",
+		bone = "Socket.Carry.Head",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = CARRY_ALIGN_ROT,
+		scale = 0.45,
+	},
+	{
+		id = "back",
+		label = "espalda",
+		bone = "Socket.Carry.Back",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = CARRY_ALIGN_ROT,
+		scale = 0.55,
+	},
+	{
+		id = "neck",
+		label = "cuello",
+		bone = "Socket.Carry.Neck",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = CARRY_ALIGN_ROT,
+		scale = 0.5,
+	},
+}
+
+-- Sam fallback (offsets in set_attach ×10 units).
+local CARRY_SLOTS_SAM = {
 	{
 		id = "shoulder_r",
 		label = "hombro derecho",
@@ -53,6 +106,14 @@ local CARRY_SLOTS = {
 	},
 }
 
+local function carry_slots_for(player)
+	local target = hashimon.player_attach_target and hashimon.player_attach_target(player) or "sam"
+	if target == "hashimon" then
+		return CARRY_SLOTS_HASHIMON, "hashimon"
+	end
+	return CARRY_SLOTS_SAM, "sam"
+end
+
 local ZERO_COLLISION = { -0.01, -0.01, -0.01, 0.01, 0.01, 0.01 }
 
 local function creature_from(ent)
@@ -62,26 +123,216 @@ local function creature_from(ent)
 	return ent and (ent.hashimon_creature or ent.creature)
 end
 
-local function slot_by_id(id)
-	for i, slot in ipairs(CARRY_SLOTS) do
+local function slot_by_id(slots, id)
+	for i, slot in ipairs(slots) do
 		if slot.id == id then
 			return slot, i
 		end
 	end
-	return CARRY_SLOTS[1], 1
+	return slots[1], 1
 end
 
-local function slot_index_for_player(name, slot_id)
+local function slot_index_for_player(name, slots, slot_id)
 	if slot_id then
-		local _, idx = slot_by_id(slot_id)
+		local _, idx = slot_by_id(slots, slot_id)
 		hashimon._carry_slot_idx[name] = idx
 		return idx
 	end
 	local idx = hashimon._carry_slot_idx[name] or 1
-	if idx < 1 or idx > #CARRY_SLOTS then
+	if idx < 1 or idx > #slots then
 		idx = 1
 	end
 	return idx
+end
+
+--- body_def.carry_view from entity or compiled morph.
+local function resolve_carry_view(ent, creature)
+	local body_id = hashimon.body_id_from_entity and hashimon.body_id_from_entity(ent)
+	local body = body_id and hashimon.get_body and hashimon.get_body(body_id)
+	if body and body.carry_view then
+		return body.carry_view
+	end
+	if creature and hashimon.compile_morphology then
+		local morph = hashimon.compile_morphology(creature)
+		if morph and morph.body_id and hashimon.get_body then
+			body = hashimon.get_body(morph.body_id)
+			if body and body.carry_view then
+				return body.carry_view
+			end
+		end
+	end
+	return nil
+end
+
+--- Preferred carry slot from body_def.carry_view or morph body.
+local function preferred_slot_id(ent, creature)
+	local cv = resolve_carry_view(ent, creature)
+	if cv and cv.slot then
+		return cv.slot, cv.scale, cv
+	end
+	return nil, nil, nil
+end
+
+--- Restrict player slots to carry_view.slots (e.g. bloom: neck ↔ head).
+local function slots_for_entity(player, ent, creature)
+	local all_slots, attach_target = carry_slots_for(player)
+	local cv = resolve_carry_view(ent, creature)
+	if not cv or type(cv.slots) ~= "table" or #cv.slots == 0 then
+		-- Still honor global carry_view.rot when slots list is absent.
+		if cv and cv.rot and type(cv.rot) == "table" then
+			local out = {}
+			for _, s in ipairs(all_slots) do
+				out[#out + 1] = {
+					id = s.id,
+					label = s.label,
+					bone = s.bone,
+					seat = s.seat,
+					rot = cv.rot,
+					scale = (cv.scale and type(cv.scale) == "number") and cv.scale or s.scale,
+				}
+			end
+			return out, attach_target, cv
+		end
+		return all_slots, attach_target, cv
+	end
+	local filtered = {}
+	for _, id in ipairs(cv.slots) do
+		local found = select(1, slot_by_id(all_slots, id))
+		if found and found.id == id then
+			local slot = {
+				id = found.id,
+				label = found.label,
+				bone = found.bone,
+				seat = found.seat,
+				rot = (cv.rot and type(cv.rot) == "table") and cv.rot or found.rot,
+				scale = (cv.scale and type(cv.scale) == "number") and cv.scale or found.scale,
+			}
+			-- Optional per-slot seat/rot: carry_view.by_slot[id] = { seat=, rot=, scale= }
+			local by = cv.by_slot and cv.by_slot[id]
+			if by and type(by) == "table" then
+				slot = {
+					id = slot.id,
+					label = slot.label,
+					bone = slot.bone,
+					seat = by.seat or slot.seat,
+					rot = by.rot or slot.rot,
+					scale = by.scale or slot.scale,
+				}
+			end
+			filtered[#filtered + 1] = slot
+		end
+	end
+	if #filtered == 0 then
+		return all_slots, attach_target, cv
+	end
+	return filtered, attach_target, cv
+end
+
+local function copy_vec3(v, fallback)
+	if type(v) == "table" and type(v.x) == "number" then
+		return { x = v.x, y = v.y or 0, z = v.z or 0 }
+	end
+	return {
+		x = fallback.x,
+		y = fallback.y,
+		z = fallback.z,
+	}
+end
+
+local function apply_carry_scale(slot, pref_scale)
+	if not pref_scale or type(pref_scale) ~= "number" then
+		return slot
+	end
+	if slot.scale == pref_scale then
+		return slot
+	end
+	return {
+		id = slot.id,
+		label = slot.label,
+		bone = slot.bone,
+		seat = slot.seat,
+		rot = slot.rot,
+		scale = pref_scale,
+	}
+end
+
+local function carry_anim_name(ent, creature, slot_id)
+	local cv = resolve_carry_view(ent, creature)
+	if not slot_id and ent and ent.carried_by and hashimon.carries then
+		local carry = hashimon.carries[ent.carried_by]
+		if carry then
+			slot_id = carry.slot
+		end
+	end
+	if cv and type(cv.anim_by_slot) == "table" and slot_id then
+		local named = cv.anim_by_slot[slot_id]
+		if type(named) == "string" and named ~= "" then
+			return named
+		end
+	end
+	if cv and type(cv.anim) == "string" and cv.anim ~= "" then
+		return cv.anim
+	end
+	return "stand"
+end
+
+local function play_carry_anim(ent, creature, slot_id)
+	if not ent or not ent.object then
+		return
+	end
+	local anim_name = carry_anim_name(ent, creature, slot_id)
+	-- Prefer morph/body_def ranges so a hot-reload picks up new perch_* clips
+	-- even if the live Creatura entity still has a stale animations table.
+	local body = nil
+	local morph = ent.hashimon_morph
+	if morph and morph.body_id and hashimon.get_body then
+		body = hashimon.get_body(morph.body_id)
+	end
+	if not body then
+		local body_id = hashimon.body_id_from_entity and hashimon.body_id_from_entity(ent)
+		body = body_id and hashimon.get_body and hashimon.get_body(body_id)
+	end
+	local spec = body and body.animations and body.animations[anim_name]
+	if not spec and ent.animations then
+		spec = ent.animations[anim_name]
+	end
+	if not spec then
+		spec = body and body.animations and body.animations.stand
+			or (ent.animations and ent.animations.stand)
+	end
+	if not spec or not spec.range then
+		core.log("warning", "[baby_carry] no anim spec for " .. tostring(anim_name))
+		return
+	end
+	local range = spec.range
+	local speed = spec.speed or 24
+	local loop = spec.loop ~= false
+	-- Bypass Creatura :animate so we always hit ObjectRef frames.
+	ent._anim = anim_name
+	ent.object:set_animation(range, speed, 0, loop)
+	core.log("action", string.format(
+		"[baby_carry] perch anim %s frames %s-%s @%s",
+		tostring(anim_name), tostring(range.x), tostring(range.y), tostring(speed)
+	))
+end
+
+--- World-space scale for an attached child. Luanti multiplies child visual_size
+--- by the parent's (same as mount rider_scale) — divide so carry_view.scale is
+--- "fraction of unattached size in world space".
+local function attached_visual_size(base_vs, scale, parent)
+	local bx = (type(base_vs) == "table" and base_vs.x) or 1
+	local by = (type(base_vs) == "table" and base_vs.y) or bx
+	local mult = (type(scale) == "number" and scale > 0) and scale or 0.5
+	local parent_vs = 1
+	if parent and parent.get_properties then
+		local pp = parent:get_properties()
+		local pvs = pp and pp.visual_size
+		if type(pvs) == "table" and type(pvs.x) == "number" and pvs.x > 0.001 then
+			parent_vs = pvs.x
+		end
+	end
+	local factor = mult / parent_vs
+	return { x = bx * factor, y = by * factor }
 end
 
 function hashimon.is_carryable(creature)
@@ -203,20 +454,22 @@ local function restore_entity_props(obj, ent, saved)
 	end
 end
 
-local function apply_carry_attach(player, obj, ent, slot)
+local function apply_carry_attach(player, obj, ent, slot, attach_target)
+	attach_target = attach_target
+		or (hashimon.player_attach_target and hashimon.player_attach_target(player))
+		or "sam"
 	if hashimon.attach_to_socket then
-		hashimon.attach_to_socket(player, slot.bone, obj, slot.seat, slot.rot, "sam", true)
+		hashimon.attach_to_socket(player, slot.bone, obj, slot.seat, slot.rot, attach_target, true)
 	else
-		local bone = hashimon.resolve_bone and hashimon.resolve_bone(slot.bone, "sam") or slot.bone
+		local bone = hashimon.resolve_bone and hashimon.resolve_bone(slot.bone, attach_target) or slot.bone
 		obj:set_attach(player, bone, slot.seat, slot.rot, true)
 	end
 
 	local props = obj:get_properties()
 	local vs = props and props.visual_size
-	local mult = slot.scale or 0.5
 	if vs and type(vs.x) == "number" then
 		obj:set_properties({
-			visual_size = { x = vs.x * mult, y = vs.y * mult },
+			visual_size = attached_visual_size(vs, slot.scale or 0.5, player),
 			collisionbox = ZERO_COLLISION,
 			physical = false,
 		})
@@ -225,9 +478,96 @@ local function apply_carry_attach(player, obj, ent, slot)
 
 	ent.carried_by = player:get_player_name()
 	ent._carry_anim_set = nil
-	if ent.set_animation then
-		ent:set_animation("stand")
+	play_carry_anim(ent, creature_from(ent), slot.id)
+	ent._carry_anim_set = true
+end
+
+--- Live-calibrate attach rotation while carrying (like /hashimon rot for mounts).
+--- Paste the printed rot into carry_view.rot or by_slot.<id>.rot.
+function hashimon.apply_carry_rot(player, rot)
+	if not player or not player:is_player() then
+		return false, "no_player"
 	end
+	local name = player:get_player_name()
+	local carry = hashimon.carries[name]
+	if not carry or not carry.obj or not carry.obj:get_luaentity() then
+		return false, "none"
+	end
+	if type(rot) ~= "table" or type(rot.x) ~= "number" then
+		return false, "bad_rot"
+	end
+
+	local ent = carry.ent
+	local slots, attach_target = slots_for_entity(player, ent, carry.creature)
+	local base = select(1, slot_by_id(slots, carry.slot))
+	local slot = {
+		id = base.id,
+		label = base.label,
+		bone = base.bone,
+		seat = copy_vec3(carry.live_seat or base.seat, { x = 0, y = 0, z = 0 }),
+		rot = { x = rot.x, y = rot.y, z = rot.z },
+		scale = base.scale,
+	}
+
+	local obj = carry.obj
+	obj:set_detach()
+	if carry.saved and carry.saved.visual_size then
+		obj:set_properties({
+			visual_size = carry.saved.visual_size,
+			collisionbox = ZERO_COLLISION,
+			physical = false,
+		})
+	end
+	apply_carry_attach(player, obj, ent, slot, attach_target)
+	carry.slot = slot.id
+	carry.attach_target = attach_target
+	carry.live_rot = slot.rot
+
+	return true, slot
+end
+
+--- Live-calibrate attach seat while carrying (like /hashimon seat for mounts).
+--- Paste into carry_view.by_slot.<id>.seat.
+function hashimon.apply_carry_seat(player, seat)
+	if not player or not player:is_player() then
+		return false, "no_player"
+	end
+	local name = player:get_player_name()
+	local carry = hashimon.carries[name]
+	if not carry or not carry.obj or not carry.obj:get_luaentity() then
+		return false, "none"
+	end
+	if type(seat) ~= "table" or type(seat.x) ~= "number" then
+		return false, "bad_seat"
+	end
+
+	local ent = carry.ent
+	local slots, attach_target = slots_for_entity(player, ent, carry.creature)
+	local base = select(1, slot_by_id(slots, carry.slot))
+	local slot = {
+		id = base.id,
+		label = base.label,
+		bone = base.bone,
+		seat = { x = seat.x, y = seat.y, z = seat.z },
+		rot = copy_vec3(carry.live_rot or base.rot, CARRY_ALIGN_ROT),
+		scale = base.scale,
+	}
+
+	local obj = carry.obj
+	obj:set_detach()
+	if carry.saved and carry.saved.visual_size then
+		obj:set_properties({
+			visual_size = carry.saved.visual_size,
+			collisionbox = ZERO_COLLISION,
+			physical = false,
+		})
+	end
+	apply_carry_attach(player, obj, ent, slot, attach_target)
+	carry.slot = slot.id
+	carry.attach_target = attach_target
+	carry.live_seat = slot.seat
+
+	return true, slot
 end
 
 --- Nearest owned baby within range.
@@ -298,24 +638,46 @@ function hashimon.carry(player, obj, slot_id)
 		return false, "mounted"
 	end
 
-	local idx = slot_index_for_player(name, slot_id)
-	local slot = CARRY_SLOTS[idx]
+	local slots, attach_target = slots_for_entity(player, ent, creature)
+	local pref_id, pref_scale = preferred_slot_id(ent, creature)
+	if not slot_id and pref_id then
+		slot_id = pref_id
+	end
+
+	local idx = slot_index_for_player(name, slots, slot_id)
+	local slot = slots[idx]
 	if slot_id then
-		local _, new_idx = slot_by_id(slot_id)
-		slot = CARRY_SLOTS[new_idx]
+		local found, new_idx = slot_by_id(slots, slot_id)
+		slot = found
 		idx = new_idx
 		hashimon._carry_slot_idx[name] = idx
 	end
+	slot = apply_carry_scale(slot, pref_scale)
 
-	local props = obj:get_properties()
-	local saved = {
-		visual_size = props and props.visual_size,
-		collisionbox = props and props.collisionbox,
-		physical = props and props.physical,
-		nametag = obj:get_nametag_attributes(),
-	}
+	local existing = hashimon.carries[name]
+	local saved
+	if existing and existing.obj == obj and existing.saved then
+		-- Re-slotting same baby: keep original props and detach first.
+		saved = existing.saved
+		obj:set_detach()
+		if saved.visual_size then
+			obj:set_properties({
+				visual_size = saved.visual_size,
+				collisionbox = ZERO_COLLISION,
+				physical = false,
+			})
+		end
+	else
+		local props = obj:get_properties()
+		saved = {
+			visual_size = props and props.visual_size,
+			collisionbox = props and props.collisionbox,
+			physical = props and props.physical,
+			nametag = obj:get_nametag_attributes(),
+		}
+	end
 
-	apply_carry_attach(player, obj, ent, slot)
+	apply_carry_attach(player, obj, ent, slot, attach_target)
 
 	hashimon.carries[name] = {
 		obj = obj,
@@ -324,6 +686,7 @@ function hashimon.carry(player, obj, slot_id)
 		slot = slot.id,
 		slot_idx = idx,
 		saved = saved,
+		attach_target = attach_target,
 	}
 
 	return true, slot.label
@@ -357,7 +720,8 @@ function hashimon.uncarry(player, drop_at_feet)
 		end
 	end
 
-	local slot_def = select(1, slot_by_id(carry.slot))
+	local slots = slots_for_entity(player, ent, carry.creature)
+	local slot_def = select(1, slot_by_id(slots, carry.slot))
 	local label = (slot_def and slot_def.label) or carry.slot
 	hashimon.carries[name] = nil
 	return true, label
@@ -374,49 +738,50 @@ function hashimon.cycle_carry_slot(player, dir)
 		return false, "none"
 	end
 
+	local ent = carry.ent
+	local slots, attach_target = slots_for_entity(player, ent, carry.creature)
 	dir = (dir or "next"):lower()
 	local idx = carry.slot_idx or 1
+	-- Remap idx if slots list changed (e.g. body with restricted slots).
+	local cur = select(1, slot_by_id(slots, carry.slot))
+	if cur and cur.id == carry.slot then
+		_, idx = slot_by_id(slots, carry.slot)
+	elseif idx < 1 or idx > #slots then
+		idx = 1
+	end
 	if dir == "prev" then
 		idx = idx - 1
 		if idx < 1 then
-			idx = #CARRY_SLOTS
+			idx = #slots
 		end
 	else
 		idx = idx + 1
-		if idx > #CARRY_SLOTS then
+		if idx > #slots then
 			idx = 1
 		end
 	end
 
 	hashimon._carry_slot_idx[name] = idx
-	local slot = CARRY_SLOTS[idx]
+	local slot = slots[idx]
+	local _, pref_scale = preferred_slot_id(ent, carry.creature)
+	slot = apply_carry_scale(slot, pref_scale)
 
 	local obj = carry.obj
-	local ent = carry.ent
 	obj:set_detach()
 
-	-- Re-apply shrunk size before attach (restore would full-size it).
-	local props = obj:get_properties()
-	local vs = props and props.visual_size
-	local mult = slot.scale or 0.5
-	if carry.saved and carry.saved.visual_size and type(carry.saved.visual_size.x) == "number" then
-		local base = carry.saved.visual_size
+	-- Restore base visual_size so apply_carry_attach scales once (not compound).
+	if carry.saved and carry.saved.visual_size then
 		obj:set_properties({
-			visual_size = { x = base.x * mult, y = base.y * mult },
-			collisionbox = ZERO_COLLISION,
-			physical = false,
-		})
-	elseif vs and type(vs.x) == "number" then
-		obj:set_properties({
-			visual_size = { x = vs.x * mult, y = vs.y * mult },
+			visual_size = carry.saved.visual_size,
 			collisionbox = ZERO_COLLISION,
 			physical = false,
 		})
 	end
 
-	apply_carry_attach(player, obj, ent, slot)
+	apply_carry_attach(player, obj, ent, slot, attach_target)
 	carry.slot = slot.id
 	carry.slot_idx = idx
+	carry.attach_target = attach_target
 
 	return true, slot.label
 end
@@ -463,7 +828,7 @@ function hashimon.try_owner_carry(clicker, obj, creature, owner)
 	local ok, result = hashimon.carry(clicker, obj, nil)
 	if ok then
 		core.chat_send_player(name, string.format(
-			"[Hashimon] Cargando en %s — /hashimon carry next para cambiar posición.",
+			"[Hashimon] Cargando en %s — Shift+Z posición, Shift+Space soltar.",
 			result or "?"
 		))
 	else
@@ -473,11 +838,13 @@ function hashimon.try_owner_carry(clicker, obj, creature, owner)
 end
 
 function hashimon.step_carried(self, _dtime)
-	if self.set_animation then
-		if not self._carry_anim_set then
-			self:set_animation("stand")
-			self._carry_anim_set = true
+	if not self._carry_anim_set then
+		local slot_id = nil
+		if self.carried_by and hashimon.carries and hashimon.carries[self.carried_by] then
+			slot_id = hashimon.carries[self.carried_by].slot
 		end
+		play_carry_anim(self, creature_from(self), slot_id)
+		self._carry_anim_set = true
 	end
 end
 
@@ -527,9 +894,55 @@ function hashimon.carry_command(name, rest)
 		return false, "Primero carga un baby (click derecho o /hashimon carry)."
 	end
 
-	for _, slot in ipairs(CARRY_SLOTS) do
+	if sub == "rot" then
+		local x_s, y_s, z_s = tostring(rest or ""):match("^%S+%s+(%S+)%s+(%S+)%s+(%S+)$")
+		local x, y, z = tonumber(x_s), tonumber(y_s), tonumber(z_s)
+		if not x or not y or not z then
+			return false, "Usage: /hashimon carry rot <x> <y> <z>  (mientras cargas; °)"
+		end
+		local ok, slot = hashimon.apply_carry_rot(player, { x = x, y = y, z = z })
+		if not ok then
+			if slot == "none" then
+				return false, "Primero carga un baby."
+			end
+			return false, "No se pudo aplicar rot (" .. tostring(slot) .. ")."
+		end
+		local r = slot.rot
+		return true, string.format(
+			"carry rot = { x=%.0f, y=%.0f, z=%.0f }  — pega en carry_view.rot (slot %s)",
+			r.x, r.y, r.z, tostring(slot.id)
+		)
+	end
+
+	if sub == "seat" then
+		local x_s, y_s, z_s = tostring(rest or ""):match("^%S+%s+(%S+)%s+(%S+)%s+(%S+)$")
+		local x, y, z = tonumber(x_s), tonumber(y_s), tonumber(z_s)
+		if not x or not y or not z then
+			return false, "Usage: /hashimon carry seat <x> <y> <z>  (mientras cargas; set_attach)"
+		end
+		local ok, slot = hashimon.apply_carry_seat(player, { x = x, y = y, z = z })
+		if not ok then
+			if slot == "none" then
+				return false, "Primero carga un baby."
+			end
+			return false, "No se pudo aplicar seat (" .. tostring(slot) .. ")."
+		end
+		local s = slot.seat
+		return true, string.format(
+			"carry seat = { x=%.2f, y=%.2f, z=%.2f }  — pega en by_slot.%s.seat",
+			s.x, s.y, s.z, tostring(slot.id)
+		)
+	end
+
+	local carry = hashimon.carries[name]
+	local slots
+	if carry and carry.obj and carry.obj:get_luaentity() then
+		slots = slots_for_entity(player, carry.ent, carry.creature)
+	else
+		slots = carry_slots_for(player)
+	end
+	for _, slot in ipairs(slots) do
 		if sub == slot.id or sub == slot.label:gsub(" ", "_") then
-			local carry = hashimon.carries[name]
 			if carry and carry.obj and carry.obj:get_luaentity() then
 				local ok, label = hashimon.carry(player, carry.obj, slot.id)
 				if ok then
@@ -547,7 +960,7 @@ function hashimon.carry_command(name, rest)
 			return true, "Baby suelto."
 		end
 		return true, string.format(
-			"Cargando en %s — /hashimon carry next para rotar.",
+			"Cargando en %s — Shift+Z posición, Shift+Space soltar.",
 			label or "?"
 		)
 	end
@@ -562,6 +975,54 @@ core.register_on_leaveplayer(function(player)
 	else
 		hashimon.clear_carry_state(name)
 	end
+	hashimon._carry_key_held[name] = nil
 end)
 
-core.log("action", "[hashimon_entities] baby_carry loaded (Shift-free: click baby, carry next/prev)")
+-- Keybinds (Luanti only exposes control bits — not raw letters):
+--   Shift+Z  (sneak+zoom)  → carry next   — only while carrying
+--   Shift+Space (sneak+jump) → carry off  — only while carrying
+-- Rising edge; ignored when mounted / yeeting / ritual.
+hashimon.carry_keybind_enabled = true
+hashimon._carry_key_held = hashimon._carry_key_held or {}
+
+core.register_globalstep(function(_dtime)
+	if not hashimon.carry_keybind_enabled then
+		return
+	end
+	for _, player in ipairs(core.get_connected_players()) do
+		local name = player:get_player_name()
+		local carry = hashimon.carries[name]
+		local ctrl = player:get_player_control()
+		local held = hashimon._carry_key_held[name] or {}
+
+		local next_combo = ctrl.sneak and ctrl.zoom and not ctrl.aux1
+		local off_combo = ctrl.sneak and ctrl.jump and not ctrl.aux1
+			and not ctrl.left and not ctrl.right and not ctrl.zoom
+
+		local next_edge = next_combo and not held.next
+		local off_edge = off_combo and not held.off
+		hashimon._carry_key_held[name] = { next = next_combo, off = off_combo }
+
+		if not carry or not carry.obj or not carry.obj:get_luaentity() then
+			-- Binds only apply while a baby is attached.
+		elseif hashimon.mounts and hashimon.mounts[name] then
+			-- Mount owns jump / mobility.
+		elseif hashimon._impact_flights and hashimon._impact_flights[name] then
+			-- Yeeting.
+		elseif hashimon._evolve_rituals and hashimon._evolve_rituals[name] then
+			-- Ritual in progress.
+		elseif off_edge then
+			local ok = hashimon.uncarry(player, true)
+			if ok then
+				core.chat_send_player(name, "[Hashimon] Baby suelto (Shift+Space).")
+			end
+		elseif next_edge then
+			local ok, label = hashimon.cycle_carry_slot(player, "next")
+			if ok then
+				core.chat_send_player(name, "[Hashimon] Posición: " .. tostring(label) .. " (Shift+Z).")
+			end
+		end
+	end
+end)
+
+core.log("action", "[hashimon_entities] baby_carry loaded (Bob Socket.Carry.* / Sam fallback; Shift+Z next, Shift+Space off)")

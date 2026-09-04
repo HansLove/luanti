@@ -138,8 +138,8 @@ core.register_on_joinplayer(function(player, _last_login)
 end)
 
 core.register_chatcommand("hashimon", {
-	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|evolve|ritualkit|carry|mount|mount_element|eyes|eyes3|seat|rot|yeet|worldpath>",
-	description = "Hashimon: sync, evolve, carry baby, mount, yeet, …",
+	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|evolve|ritualkit|carry|avatar|mount|mount_element|eyes|eyes3|seat|rot|yeet|worldpath>",
+	description = "Hashimon: sync, evolve, carry, avatar bob, mount, yeet, …",
 	func = function(name, param)
 		local player = core.get_player_by_name(name)
 		if not player then
@@ -341,6 +341,27 @@ core.register_chatcommand("hashimon", {
 				return true, "Ya tienes las herramientas ritual en el inventario."
 			end
 			return true, "Kit ritual opcional entregado. Beta: preferí Shift+D (Titan) / Shift+A (Baby) 1s."
+		end
+
+		if cmd == "avatar" then
+			if not hashimon.apply_player_avatar then
+				return false, "hashimon_players mod not loaded. Enable it in Content."
+			end
+			local sub = (rest:match("^(%S*)") or ""):lower()
+			if sub == "" or sub == "status" then
+				local id = hashimon.get_player_avatar and hashimon.get_player_avatar(player) or "?"
+				return true, "Avatar actual: " .. tostring(id)
+			end
+			local ok, label = hashimon.set_player_avatar(player, sub)
+			if ok then
+				return true, "Avatar: " .. tostring(label)
+			end
+			if label == "unknown" then
+				return false, "Uso: /hashimon avatar bob"
+			elseif label == "missing_mesh" then
+				return false, "Falta el modelo del avatar en hashimon_players/models."
+			end
+			return false, "No se pudo aplicar el avatar (" .. tostring(label) .. ")."
 		end
 
 		if cmd == "carry" then
@@ -599,6 +620,6 @@ core.register_chatcommand("hashimon", {
 			return true, "Blast orb launched."
 		end
 
-		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack, evolve, carry, ritualkit, mount, mount_element, yeet"
+		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack, evolve, carry, avatar, ritualkit, mount, mount_element, yeet"
 	end,
 })

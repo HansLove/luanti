@@ -597,6 +597,10 @@ local function generate_tile(tile_x, tile_z, callback)
 			table.concat(pixels)
 		)
 		minetest.safe_file_write(filename, png_data)
+
+		-- Mirror to the Hashimon API so the website cadastral map can use the same
+		-- surface painting (optional: no-op when hashimon_core is absent).
+		persistent_map.push_tile_to_api(tile_x, tile_z, png_data)
 		
 		-- Load texture dynamically
 		minetest.dynamic_add_media(filename, function()
@@ -605,6 +609,69 @@ local function generate_tile(tile_x, tile_z, callback)
 	end)
 	
 	return tile_id
+end
+
+-- Upload one tile PNG to the API (in-memory bytes or read from disk).
+function persistent_map.push_tile_to_api(tile_x, tile_z, png_data)
+	if not hashimon or not hashimon.push_map_tile or not hashimon.get_server_secret then
+		return
+	end
+	local secret = hashimon.get_server_secret()
+	if not secret or secret == "" then
+		return
+	end
+	local data = png_data
+	if not data then
+		local filename = map_path .. get_tile_id(tile_x, tile_z) .. ".png"
+		local f = io.open(filename, "rb")
+		if not f then
+			return
+		end
+		data = f:read("*a")
+		f:close()
+	end
+	if not data or data == "" then
+		return
+	end
+	hashimon.push_map_tile(secret, {
+		tileX = tile_x,
+		tileZ = tile_z,
+		png = minetest.encode_base64(data),
+	}, function(ok, err)
+		if not ok then
+			minetest.log("warning", "[discovery_maps] push_map_tile " ..
+				get_tile_id(tile_x, tile_z) .. " failed: " .. tostring(err))
+		end
+	end)
+end
+
+-- One-shot / boot: push every on-disk persistent_maps tile to the API.
+function persistent_map.sync_all_tiles_to_api()
+	if not hashimon or not hashimon.push_map_tile then
+		return 0
+	end
+	local names = minetest.get_dir_list(map_path, false) or {}
+	local queue = {}
+	for _, name in ipairs(names) do
+		local tx, tz = name:match("^tile_(-?%d+)_(-?%d+)%.png$")
+		if tx then
+			queue[#queue + 1] = { tonumber(tx), tonumber(tz) }
+		end
+	end
+	local i = 0
+	local function step()
+		i = i + 1
+		local t = queue[i]
+		if not t then
+			return
+		end
+		persistent_map.push_tile_to_api(t[1], t[2], nil)
+		minetest.after(0.25, step)
+	end
+	if #queue > 0 then
+		minetest.after(1, step)
+	end
+	return #queue
 end
 
 local function ensure_tile_generated(player_name, tile_x, tile_z)
@@ -1437,12 +1504,16 @@ end
 
 -- Register chatcommand to open map
 minetest.register_chatcommand("map", {
-	description = S("Open the persistent map (/map full = fit all discovered)"),
-	params = "[full]",
+	description = S("Open the persistent map (/map full = fit all discovered; /map syncweb = push tiles to website)"),
+	params = "[full|syncweb]",
 	func = function(name, param)
 		param = (param or ""):trim()
 		if not map_zoom_level[name] then
 			map_zoom_level[name] = persistent_map.default_zoom_index
+		end
+		if param == "syncweb" then
+			local n = persistent_map.sync_all_tiles_to_api()
+			return true, S("Queued @1 map tiles for the website", tostring(n))
 		end
 		if param == "full" then
 			persistent_map.fit_map_to_discovered(name)
@@ -1453,6 +1524,15 @@ minetest.register_chatcommand("map", {
 		return true, S("Map opened")
 	end,
 })
+
+-- After mods load, push any tiles already on disk (backfill for tiles generated
+-- before the API hook existed). Staggered inside sync_all_tiles_to_api.
+minetest.after(8, function()
+	local n = persistent_map.sync_all_tiles_to_api()
+	if n > 0 then
+		minetest.log("action", "[discovery_maps] syncweb backfill queued " .. n .. " tiles")
+	end
+end)
 
 -- Handle formspec input for navigation with proper orientation and marker system
 minetest.register_on_player_receive_fields(function(player, formname, fields)

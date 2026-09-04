@@ -12,7 +12,28 @@
 --     fly             121     30 frames   no  (capabilities.fly)
 --     swim            161     30 frames   no  (capabilities.swim)
 --     fly_boost       201     30 frames   no  (hold Sprint/E en montura aérea)
---     (reservado)     241                 attack / hurt
+--     fly_rocket      241     30 frames   no  (Space+Sprint cohete / subida)
+--     fly_dive        281     30 frames   no  (Sneak+Sprint picada)
+--     run_boost       321     30 frames   no  (Sprint / rayo eléctrico en terrestre,
+--                                              p.ej. Road eléctrico — NO es fly_boost)
+--     perch_neck      361     30 frames   no  (baby carry: bufanda / Socket.Carry.Neck)
+--     perch_head      401     30 frames   no  (baby carry: gorra / Socket.Carry.Head)
+--     perch_shoulder  441     30 frames   no  (baby carry: hombro L/R)
+--     perch_back      481     30 frames   no  (baby carry: mochila)
+--
+-- Brief animador aéreo: fly_rocket = alas plegadas / cuerpo vertical arriba;
+-- fly_dive = nose-down, alas retraídas. Si el GLB no tiene el clip, no lo
+-- declares en bodies — el FSM degrada a fly_boost → fly.
+-- `fly` también hace de hover/standby: montura aérea quieta en el aire NO usa
+-- idle (se veía plantada). No hace falta un clip fly_stand_by aparte.
+--
+-- Brief animador perch (carry): anima la pose YA colocada en el socket de Bob
+-- (cabeza/cuello/hombro). Runtime reproduce el clip según carry_view.anim_by_slot;
+-- sin clip → stand + by_slot.rot/seat.
+--
+-- Brief animador terrestre eléctrico: run_boost = ciclo de sprint (cuerpo
+-- "energía", extremidades rápidas). Hasta que el GLB llegue al frame 350,
+-- declara sólo idle/walk/run; el FSM usa `run` como fallback.
 --
 --     inicio del clip n = 1 + 40*(n-1)
 --
@@ -51,6 +72,13 @@ hashimon_bodies.ANIM_START = {
 	fly  = 121,
 	swim = 161,
 	fly_boost = 201,
+	fly_rocket = 241,
+	fly_dive = 281,
+	run_boost = 321,
+	perch_neck = 361,
+	perch_head = 401,
+	perch_shoulder = 441,
+	perch_back = 481,
 }
 
 hashimon_bodies.ANIM_BUDGET = 30
@@ -60,7 +88,11 @@ hashimon_bodies.ANIM_FPS = 24
 -- se nombra en Blender. La traducción vive aquí y en ningún otro sitio.
 local ENGINE_NAME = { idle = "stand" }
 
-local ORDER = { "idle", "walk", "run", "fly", "swim", "fly_boost" }
+local ORDER = {
+	"idle", "walk", "run", "fly", "swim",
+	"fly_boost", "fly_rocket", "fly_dive", "run_boost",
+	"perch_neck", "perch_head", "perch_shoulder", "perch_back",
+}
 
 --- Tabla `animations` a partir de la LONGITUD de cada clip.
 ---

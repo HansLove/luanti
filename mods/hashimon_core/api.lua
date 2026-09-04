@@ -316,6 +316,32 @@ function hashimon.push_towns(secret, payload, callback)
 	end)
 end
 
+-- Push one discovery_maps surface PNG to the API so the website cadastral map can
+-- draw the same sea/land underlay. `payload` = { tileX, tileZ, png = base64 }.
+-- Projection only — never a ledger event. Server-secret authed.
+function hashimon.push_map_tile(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-map-tiles",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then
+			if callback then callback(false, "request_incomplete") end
+			return
+		end
+		if res.code ~= 200 then
+			if callback then callback(false, http_failure_code(res)) end
+			return
+		end
+		if callback then callback(true, nil) end
+	end)
+end
+
 -- Poll the API for pending town political actions (co-mayor promote/demote made on
 -- the website). callback(ok, err, actions) — actions is a list the world re-validates
 -- and applies in Towny. Server-secret authed.
@@ -333,6 +359,25 @@ function hashimon.fetch_town_actions(secret, callback)
 		local body = parse_json_or_nil(res.data)
 		if not body or type(body.actions) ~= "table" then callback(false, "invalid_response", nil); return end
 		callback(true, nil, body.actions)
+	end)
+end
+
+-- Poll active town alliances (peace pacts) as a list of [a,b] name pairs, so the war
+-- mod can suppress war/attacks between allied towns. callback(ok, err, pairs).
+function hashimon.fetch_alliances(secret, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-alliances",
+		method = "GET",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Accept", "application/json" },
+		}),
+	}, function(res)
+		if not res.completed then callback(false, "request_incomplete", nil); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res), nil); return end
+		local body = parse_json_or_nil(res.data)
+		if not body or type(body.alliances) ~= "table" then callback(false, "invalid_response", nil); return end
+		callback(true, nil, body.alliances)
 	end)
 end
 

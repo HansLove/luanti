@@ -18,6 +18,11 @@ hashimon.BONE_ALIAS_SAM = {
 	["Socket.Chest"] = "Body",
 	["Socket.Back"] = "Body",
 	["Socket.Shoulder"] = "Arm_Right",
+	["Socket.Carry.Head"] = "Head",
+	["Socket.Carry.Back"] = "Body",
+	["Socket.Carry.Neck"] = "Body",
+	["Socket.Carry.Shoulder.R"] = "Arm_Right",
+	["Socket.Carry.Shoulder.L"] = "Arm_Left",
 }
 
 --- Proximal base for chain segments: Arm.R.2 → Arm.R, Spine.01 → Spine.

@@ -85,11 +85,12 @@ Cooldown 3s. Hotbar tools are **optional** (`/hashimon ritualkit`); not given on
 Not saved to the API — `/hashimon sync` reverts. Skips if already at that stage,
 mounted, or mid-impact yeet.
 
-## Baby carry (on Sam)
+## Baby carry (on Bob / Sam)
 
-[`baby_carry.lua`](baby_carry.lua) — inverse of mount: **baby ★1 attaches to the
-player** via `hashimon.attach_to_socket(..., "sam")`. Follows Sam walk/run on
-the chosen bone. Manual only (right-click); no auto-carry after baby ritual.
+[`baby_carry.lua`](baby_carry.lua) — baby ★1 attaches to the **player**.
+With **Bob** ([`hashimon_players`](../hashimon_players/)): sockets
+`Socket.Carry.Shoulder.R`, `.Head`, `.Neck`, `.Back` at seat `{0,0,0}`.
+Sam fallback uses Arm/Head offsets if Bob is not loaded.
 
 ### Control
 
@@ -99,25 +100,15 @@ the chosen bone. Manual only (right-click); no auto-carry after baby ritual.
 | `/hashimon carry` | Toggle nearest baby |
 | `/hashimon carry next` / `prev` | Cycle slot while carrying |
 | `/hashimon carry off` | Drop |
+| **Shift+Z** (sneak+zoom) | Carry next — only while carrying |
+| **Shift+Space** (sneak+jump) | Carry off — only while carrying |
+| `/hashimon avatar bob` | Apply Bob player mesh |
 
-### Carry slots (cycle order)
+`guardian_baby` defaults to **shoulder_r** via `carry_view`.
+`bloom_baby_air`: **head** / **shoulder_r**; scale ~0.9.
+`beacon_baby_air`: **neck** (`perch_neck`); **visual_size_base = 2.76** (1:1 Bob); carry scale **1.0**.
+`beacon_baby_water`: **shoulder** (no perch); hitbox.h **0.70**; scale ~0.9.
+Bob carry slots use **rot.y = 180** so baby faces with Bob (`/hashimon carry rot` to calibrate).
 
-| Slot | Sam bone | Notes |
-|------|----------|-------|
-| Hombro derecho | `Arm_Right` | default cycle start |
-| Hombro izquierdo | `Arm_Left` | |
-| Cabeza | `Head` | offset Y+ |
-| Espalda | `Body` | offset dorsal |
-| Cuello | `Body` | pecho alto (no Neck bone on Sam) |
-
-Seat/rot presets live in `CARRY_SLOTS` inside `baby_carry.lua` (Luanti ×10 units).
-
-### Limits (beta)
-
-- **Creatura / rigged GLB only** — voxel and sprite rosters cannot carry.
-- Incompatible while **mounted**, **yeeting**, or mid **evolve ritual**.
-- Evolving out of baby or `/hashimon sync` drops carry state.
-- Sam has no “hold baby” animation yet; mesh follows the bone only.
-
-See also [`docs/SKELETON_STANDARD_V1.md`](../../docs/SKELETON_STANDARD_V1.md) §3c.
+Enable **hashimon_players** in Content so join replaces Sam with Bob.
 

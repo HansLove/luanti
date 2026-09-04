@@ -142,11 +142,20 @@ local last_msg = {}      -- [name] = last war line, echoed in the panel
 --   front  = { key, center, town, count, home }   (defender quadrant)
 -- Returns (ok, message). Mutates garrison / does the capture; caller re-shows panel.
 ------------------------------------------------------------------------
+-- Active alliances (peace pacts) fetched from the API. Allied towns never auto-war
+-- and cannot attack each other, so allied neighbours form one contiguous bloc.
+local allies = {}   -- ["A|B"] (sorted) = true
+local function ally_key(a, b) if a < b then return a .. "|" .. b else return b .. "|" .. a end end
+local function are_allied(a, b) return (a and b and allies[ally_key(a, b)] == true) and true or false end
+
 local function attack_core(name, aInfo, front)
 	local now = os.time()
 	local prev = last_attack[name]
 	if prev and (now - prev) < cfg.cooldown then
 		return false, string.format("Espera %ds para el siguiente ataque.", math.ceil(cfg.cooldown - (now - prev)))
+	end
+	if are_allied(aInfo.town.name, front.town.name) then
+		return false, front.town.name .. " es tu aliado — no puedes atacarlo. Rompe la alianza primero."
 	end
 	if front.home then
 		return false, front.town.name .. ": no puedes capturar la capital. Rompe su frontera primero."
@@ -231,6 +240,7 @@ local function context(name)
 				ctx.fronts[#ctx.fronts + 1] = {
 					key = key_of(nbp), center = center, town = nb.town,
 					count = gget(key_of(nbp)), home = is_homeblock(nb),
+					ally = are_allied(at.name, nb.town.name),
 				}
 			end
 		end
@@ -271,9 +281,11 @@ local function show_panel(name)
 			for i, fr in ipairs(ctx.fronts) do
 				panel_fronts[name][i] = fr
 				local y = 3.9 + (i - 1) * 0.8
-				local tag = fr.home and "  [CAPITAL]" or ""
+				local tag = fr.ally and "  [ALIADO]" or (fr.home and "  [CAPITAL]" or "")
 				fs[#fs + 1] = string.format("label[0.6,%.2f;%s — %d fichas%s]", y + 0.25, F(fr.town.name), fr.count, tag)
-				if fr.home then
+				if fr.ally then
+					fs[#fs + 1] = string.format("button[6.4,%.2f;3.0,0.7;atk_%d;Aliado]", y, i)
+				elseif fr.home then
 					fs[#fs + 1] = string.format("button[6.4,%.2f;3.0,0.7;atk_%d;Inmune]", y, i)
 				else
 					fs[#fs + 1] = string.format("button[6.4,%.2f;3.0,0.7;atk_%d;Atacar]", y, i)
@@ -523,7 +535,7 @@ core.register_globalstep(function(dtime)
 				if nb and nb.town ~= town and nb.town.name and town.name then
 					local pk = pair_key(town.name, nb.town.name)
 					seen[pk] = true
-					if not known_wars[pk] then
+					if not known_wars[pk] and not are_allied(town.name, nb.town.name) then
 						known_wars[pk] = true
 						announce(string.format("⚔ ¡GUERRA! Las fronteras de %s y %s chocaron. Su frontera está en disputa.",
 							F(town.name), F(nb.town.name)))
@@ -547,3 +559,33 @@ core.register_on_leaveplayer(function(player)
 end)
 
 core.log("action", "[hashimon_war] loaded (Risk V1: muster + deploy + capture). /war opens the panel.")
+
+-- ---------------------------------------------------------------------------
+-- Alliance poll: fetch active alliances (peace pacts) from the API so allied
+-- towns don't auto-war and can't attack each other. Needs hashimon_core (HTTP).
+-- Reassigning `allies` updates the upvalue every closure above shares.
+-- ---------------------------------------------------------------------------
+if hashimon and hashimon.fetch_alliances and hashimon.get_server_secret then
+	local ALLIANCE_INTERVAL = 10.0
+	local alliance_acc = 0
+	local alliance_busy = false
+	core.register_globalstep(function(dtime)
+		alliance_acc = alliance_acc + dtime
+		if alliance_acc < ALLIANCE_INTERVAL then return end
+		alliance_acc = 0
+		if alliance_busy then return end
+		alliance_busy = true
+		hashimon.fetch_alliances(hashimon.get_server_secret(), function(ok, err, list)
+			alliance_busy = false
+			if not ok then return end
+			local fresh = {}
+			for _, pr in ipairs(list or {}) do
+				if pr[1] and pr[2] then fresh[ally_key(pr[1], pr[2])] = true end
+			end
+			allies = fresh
+		end)
+	end)
+	core.log("action", "[hashimon_war] alliance poll active (peace between allied towns).")
+else
+	core.log("info", "[hashimon_war] hashimon_core not found — alliances disabled.")
+end
