@@ -98,7 +98,9 @@ hashimon.SPIRITS = {
 	  line = { "theropod", "crocodilian" }, kin = "crown" },
 	{ key = "bastion", name = "Bastion", name_es = "Bastión",
 	  archetype = "resistencia, estabilidad, memoria",
-	  line = { "chelonian", "ceratopsian", "stegosaur", "sauropod" }, kin = "guardian" },
+	  -- Solo quelonio propio: bastion_baby → bastion_adult. Dinosaurios a Natural
+	  -- (2026-09-04) — no intercalan triceratops/estego entre cría y adulto.
+	  line = { "chelonian" }, kin = "guardian" },
 	-- PROVISIONAL
 	{ key = "road", name = "Road", name_es = "Camino",
 	  archetype = "viaje, constancia, libertad",

@@ -400,6 +400,47 @@ function hashimon.ack_town_action(secret, id, result, detail, callback)
 	end)
 end
 
+-- Fetch synced map waypoints / nation POIs / Hashimon quests for one player.
+-- callback(ok, err, markers, capital) — markers are API present shape; capital may be nil.
+function hashimon.fetch_map_markers(secret, name, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-map-markers?name=" ..
+			core.urlencode(name),
+		method = "GET",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Accept", "application/json" },
+		}),
+	}, function(res)
+		if not res.completed then callback(false, "request_incomplete", nil, nil); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res), nil, nil); return end
+		local body = parse_json_or_nil(res.data)
+		if not body or type(body.markers) ~= "table" then
+			callback(false, "invalid_response", nil, nil)
+			return
+		end
+		callback(true, nil, body.markers, body.capital)
+	end)
+end
+
+-- Confirm arrival at a Hashimon world-care destination.
+function hashimon.arrive_map_marker(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-map-markers/arrive",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then if callback then callback(false, "request_incomplete", nil) end; return end
+		if res.code ~= 200 then if callback then callback(false, http_failure_code(res), nil) end; return end
+		if callback then callback(true, nil, parse_json_or_nil(res.data)) end
+	end)
+end
+
 -- Push an in-game signup to the API. `entry` is the "#1#salt#verifier" the
 -- engine handed to create_auth; the plaintext never reaches this server.
 function hashimon.luanti_register(secret, name, entry, callback)
@@ -426,5 +467,70 @@ function hashimon.luanti_register(secret, name, entry, callback)
 			return
 		end
 		callback(true, nil, parse_json_or_nil(res.data))
+	end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Alen Gregory. Mismo trío que las acciones de pueblo: recoger órdenes,
+-- acusarlas, y subir el informe del mundo. Autenticado por secreto de servidor.
+-- La API pide; el mundo decide. Ver hashimon_alen/orders.lua.
+-- ---------------------------------------------------------------------------
+
+--- Órdenes pendientes para el villano. callback(ok, err, orders).
+function hashimon.fetch_alen_orders(secret, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-alen-orders",
+		method = "GET",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Accept", "application/json" },
+		}),
+	}, function(res)
+		if not res.completed then callback(false, "request_incomplete", nil); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res), nil); return end
+		local body = parse_json_or_nil(res.data)
+		if not body or type(body.orders) ~= "table" then callback(false, "invalid_response", nil); return end
+		callback(true, nil, body.orders)
+	end)
+end
+
+--- Cierra una orden. `detail` lleva el motivo exacto del rechazo — sin él, el
+--- planificador del otro lado repite el mismo error indefinidamente.
+function hashimon.ack_alen_order(secret, id, result, detail, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-alen-orders/ack",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json({ id = id, result = result, detail = detail or "" }),
+	}, function(res)
+		if not callback then return end
+		if not res.completed then callback(false, "request_incomplete"); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res)); return end
+		callback(true, nil)
+	end)
+end
+
+--- Sube la proyección de estado del villano y las novedades ocurridas. Las
+--- novedades son lo que despierta al planificador: no hay temporizador al otro
+--- lado, así que el ritmo de este `events` es directamente el gasto en tokens.
+function hashimon.push_alen_state(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-alen-state",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not callback then return end
+		if not res.completed then callback(false, "request_incomplete"); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res)); return end
+		callback(true, nil)
 	end)
 end

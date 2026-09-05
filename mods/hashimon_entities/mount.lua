@@ -80,7 +80,14 @@ hashimon.GENESIS_MOBILITY = {
 		swim = 12,
 		swim_boost = 2.5, -- aux1 → ~30 n/s
 		jump = JUMP_DEFAULT,
-		hint = "Montado (Agua) — WASD; en agua Sprint/aux1 = hyper-nado; sneak bucear; brilla solo bajo agua; click derecho para bajar.",
+		water_breach = true,
+		water_breach_speed = 40,
+		water_breach_t = 0.85,
+		water_breach_cd = 3.0,
+		tide_charge_fill_s = 4.5, -- hyper under real water → 0..100
+		tide_charge_drain_s = 3.0, -- air wake empties the bar
+		tide_charge_min = 12, -- need at least this to start laying wake
+		hint = "Montado (Agua) — WASD; en agua E = hyper; E+Space = surtido; carga con hyper → en aire E = camino de marea; sneak bucear; click derecho para bajar.",
 	},
 	tierra = {
 		id = "tierra",
@@ -485,6 +492,16 @@ local function clear_mount_runtime(ent)
 	ent._dive_start_y = nil
 	ent._meteor_armed = nil
 	ent._meteor_peak = nil
+	ent._water_breach_cd = nil
+	ent._water_breach_t = nil
+	ent._water_breach_look = nil
+	ent._water_breach_hint_sent = nil
+	ent._tide_charge = nil
+	ent._tide_place_t = nil
+	ent._water_skim = nil
+	if hashimon.clear_tide_wakes then
+		hashimon.clear_tide_wakes(ent)
+	end
 	ent.mount_speed = nil
 	ent._anim_fly_hold = nil
 	-- Restore Creatura AI / gravity that we suspended while ridden.
@@ -583,6 +600,16 @@ function hashimon.mount(player, mount_obj)
 	ent._water_fx_t = 0
 	ent._water_glow_on = false
 	ent._water_glow_applied = false
+	ent._water_breach_cd = 0
+	ent._water_breach_t = 0
+	ent._water_breach_look = nil
+	ent._water_breach_hint_sent = false
+	ent._tide_charge = 0
+	ent._tide_place_t = 0
+	ent._water_skim = false
+	ent._tide_wake_list = {}
+	ent._tide_wake_keys = {}
+	ent._tide_wake_count = 0
 	local props0 = ent.object:get_properties()
 	ent._pre_mount_glow = (props0 and props0.glow) or 0
 
@@ -708,6 +735,9 @@ function hashimon.dismount(player)
 		if ent and ent.rider == name then
 			if hashimon.clear_arc_bolt then
 				hashimon.clear_arc_bolt(name)
+			end
+			if hashimon.clear_tide_wakes then
+				hashimon.clear_tide_wakes(ent)
 			end
 			ent.rider = nil
 			ent._mount_view = nil
@@ -870,16 +900,60 @@ local function horizontal_velocity(dir, speed, forward)
 	return 0, 0
 end
 
-local function node_is_liquid(pos)
+local function node_is_real_liquid(pos)
 	local node = core.get_node(pos)
+	if node.name == (hashimon.TIDE_WAKE_NODE or "hashimon_entities:tide_wake") then
+		return false
+	end
 	local def = core.registered_nodes[node.name]
 	return def and def.liquidtype and def.liquidtype ~= "none"
 end
 
+local function node_is_waterish(pos)
+	local node = core.get_node(pos)
+	if node.name == (hashimon.TIDE_WAKE_NODE or "hashimon_entities:tide_wake") then
+		return true
+	end
+	local def = core.registered_nodes[node.name]
+	return def and def.liquidtype and def.liquidtype ~= "none"
+end
+
+local function mount_in_real_liquid(pos)
+	return node_is_real_liquid(pos)
+		or node_is_real_liquid({ x = pos.x, y = pos.y + 0.8, z = pos.z })
+		or node_is_real_liquid({ x = pos.x, y = pos.y + 1.4, z = pos.z })
+end
+
 local function mount_in_liquid(pos)
-	return node_is_liquid(pos)
-		or node_is_liquid({ x = pos.x, y = pos.y + 0.8, z = pos.z })
-		or node_is_liquid({ x = pos.x, y = pos.y + 1.4, z = pos.z })
+	return node_is_waterish(pos)
+		or node_is_waterish({ x = pos.x, y = pos.y + 0.8, z = pos.z })
+		or node_is_waterish({ x = pos.x, y = pos.y + 1.4, z = pos.z })
+end
+
+--- Feet / lower body touch water or wake (surface skim).
+local function mount_water_touch(pos)
+	return node_is_waterish(pos)
+		or node_is_waterish({ x = pos.x, y = pos.y - 0.35, z = pos.z })
+		or node_is_waterish({ x = pos.x, y = pos.y + 0.35, z = pos.z })
+end
+
+local function emit_water_breach_splash(pos)
+	core.add_particlespawner({
+		amount = 36,
+		time = 0.15,
+		minpos = { x = pos.x - 0.8, y = pos.y - 0.2, z = pos.z - 0.8 },
+		maxpos = { x = pos.x + 0.8, y = pos.y + 1.6, z = pos.z + 0.8 },
+		minvel = { x = -3, y = 2, z = -3 },
+		maxvel = { x = 3, y = 9, z = 3 },
+		minacc = { x = 0, y = -4, z = 0 },
+		maxacc = { x = 0, y = -1, z = 0 },
+		minexptime = 0.35,
+		maxexptime = 0.8,
+		minsize = 2.0,
+		maxsize = 5.0,
+		texture = "default_mese_crystal_fragment.png^[colorize:#38BDF8:140",
+		glow = 14,
+	})
 end
 
 local function emit_water_light(pos, hyper)
@@ -1238,13 +1312,19 @@ end
 
 local WATER_GLOW_CRUISE = 8
 local WATER_GLOW_HYPER = 14
+local WATER_GLOW_CHARGED = 18
 
-local function set_water_biolum(self, active, hyper)
+local function set_water_biolum(self, active, hyper, charged)
 	if not self or not self.object then
 		return
 	end
 	if active then
-		local want = hyper and WATER_GLOW_HYPER or WATER_GLOW_CRUISE
+		local want = WATER_GLOW_CRUISE
+		if charged then
+			want = WATER_GLOW_CHARGED
+		elseif hyper then
+			want = WATER_GLOW_HYPER
+		end
 		if not self._water_glow_applied or self._water_glow_level ~= want then
 			if self._pre_mount_glow == nil then
 				local props = self.object:get_properties()
@@ -1285,6 +1365,9 @@ local function can_burrow_node(nodename, def)
 		return false
 	end
 	if def.liquidtype and def.liquidtype ~= "none" then
+		return false
+	end
+	if nodename == (hashimon.TIDE_WAKE_NODE or "hashimon_entities:tide_wake") then
 		return false
 	end
 	if def.diggable == false then
@@ -1493,41 +1576,101 @@ function hashimon.step_mounted(self, dtime)
 	local mode = profile.mode or "ground"
 
 	local pos = self.object:get_pos() or { x = 0, y = 0, z = 0 }
+	local in_real_liquid = mount_in_real_liquid(pos)
 	local in_liquid = mount_in_liquid(pos)
+	local water_touch = mount_water_touch(pos)
+	local water_skim = false
 
-	-- --- Water: swim / hyper-nado + breath + auto biolum ---
+	-- --- Water: swim / hyper / charge / air-wake / skim ---
 	local water_hyper = false
-	if mode == "water" and in_liquid then
-		local base_swim = (profile.swim or 12) * dna_speed_mult(creature)
-		water_hyper = control.aux1 and true or false
-		self._water_hyper = water_hyper
-		if water_hyper then
-			speed = base_swim * (profile.swim_boost or 2.5)
-		else
-			speed = base_swim
-		end
-		local props = rider_obj:get_properties()
-		local breath_max = (props and props.breath_max) or 11
-		if breath_max < 1 then breath_max = 11 end
-		rider_obj:set_breath(breath_max)
+	local laying_wake = false
+	if mode == "water" then
+		self._water_breach_cd = math.max(0, (self._water_breach_cd or 0) - dtime)
+		local charge = self._tide_charge or 0
+		local fill_s = profile.tide_charge_fill_s or 4.5
+		local drain_s = profile.tide_charge_drain_s or 3.0
+		local charge_min = profile.tide_charge_min or 12
 
-		set_water_biolum(self, true, water_hyper)
-		local fx_interval = water_hyper and 0.12 or 0.25
-		self._water_fx_t = (self._water_fx_t or 0) + dtime
-		if self._water_fx_t >= fx_interval then
-			self._water_fx_t = 0
-			emit_water_light(pos, water_hyper)
+		-- Surface skim: hyper + feet wet + not fully submerged → still swim speed.
+		if control.aux1 and water_touch and not in_liquid then
+			water_skim = true
+			in_liquid = true
+		end
+		self._water_skim = water_skim
+
+		-- Air tide road: hold E with charge while not in real ocean water.
+		if control.aux1 and charge >= charge_min and not in_real_liquid then
+			laying_wake = true
+			charge = math.max(0, charge - dtime * (100 / drain_s))
+			self._tide_place_t = (self._tide_place_t or 0) + dtime
+			if self._tide_place_t >= 0.15 and hashimon.lay_tide_wake_segment then
+				self._tide_place_t = 0
+				local look = rider_obj:get_look_dir() or dir
+				hashimon.lay_tide_wake_segment(self, pos, look)
+			end
+			in_liquid = true
+			water_hyper = true
+		end
+
+		if in_liquid then
+			local base_swim = (profile.swim or 12) * dna_speed_mult(creature)
+			if not water_hyper then
+				water_hyper = control.aux1 and true or false
+			end
+			self._water_hyper = water_hyper
 			if water_hyper then
-				emit_water_hyper_trail(pos, dir)
+				speed = base_swim * (profile.swim_boost or 2.5)
+			else
+				speed = base_swim
+			end
+			local props = rider_obj:get_properties()
+			local breath_max = (props and props.breath_max) or 11
+			if breath_max < 1 then breath_max = 11 end
+			rider_obj:set_breath(breath_max)
+
+			-- Charge fills only in real water while hyper (not on ephemeral wake alone).
+			if water_hyper and in_real_liquid and not laying_wake then
+				charge = math.min(100, charge + dtime * (100 / fill_s))
+			end
+
+			local charged = charge >= charge_min
+			set_water_biolum(self, true, water_hyper, charged)
+			local fx_interval = water_hyper and 0.12 or 0.25
+			self._water_fx_t = (self._water_fx_t or 0) + dtime
+			if self._water_fx_t >= fx_interval then
+				self._water_fx_t = 0
+				emit_water_light(pos, water_hyper)
+				if water_hyper then
+					emit_water_hyper_trail(pos, dir)
+				end
+			end
+		else
+			self._water_hyper = false
+			set_water_biolum(self, false, false, false)
+		end
+		self._tide_charge = charge
+
+		-- Breach: Jump edge + E while wet (real water or wake).
+		if profile.water_breach and in_liquid then
+			local jump_edge = control.jump and not self._jump_was_down
+			if jump_edge and control.aux1 and (self._water_breach_cd or 0) <= 0
+				and (self._water_breach_t or 0) <= 0 then
+				local look = rider_obj:get_look_dir()
+				self._water_breach_look = look
+				self._water_breach_t = profile.water_breach_t or 0.85
+				self._water_breach_cd = profile.water_breach_cd or 3.0
+				emit_water_breach_splash(pos)
+				if not self._water_breach_hint_sent then
+					self._water_breach_hint_sent = true
+					core.chat_send_player(self.rider,
+						"[Hashimon] Surtido — E+Space bajo agua te dispara hacia donde miras (CD 3s). Carga con hyper; en aire E = marea.")
+				end
 			end
 		end
-	elseif mode == "water" then
-		self._water_hyper = false
-		set_water_biolum(self, false, false)
 	elseif self._water_glow_applied then
-		-- Left Agua profile (e.g. QA element swap) — drop biolum.
 		self._water_hyper = false
-		set_water_biolum(self, false, false)
+		self._water_skim = false
+		set_water_biolum(self, false, false, false)
 	end
 
 	-- --- Electric: sustained sprint (run_boost anim when available) ---
@@ -1575,8 +1718,10 @@ function hashimon.step_mounted(self, dtime)
 				-- bolt still in flight
 			end
 		end
-		self._jump_was_down = control.jump and true or false
 	end
+
+	-- Shared jump-edge latch (water breach + electric bolt + fire).
+	self._jump_was_down = control.jump and true or false
 
 	-- --- Fuego: hold aux1 = ground/air propulsion (not flight) ---
 	local fire_propel = false
@@ -1827,10 +1972,13 @@ function hashimon.step_mounted(self, dtime)
 			end
 		end
 	elseif mode == "water" and in_liquid then
-		-- Neutral buoyancy while submerged; sneak dives, jump rises.
+		-- Neutral buoyancy while submerged / on wake / skim; sneak dives, jump rises.
 		-- Hyper scales vertical motion ~1.4× so boost feels 3D.
+		-- Breach overrides this block when active.
 		local v_mult = water_hyper and 1.4 or 1.0
-		if control.sneak then
+		if (self._water_breach_t or 0) > 0 then
+			-- impulse applied below after this branch
+		elseif control.sneak then
 			vy = -6 * v_mult
 		elseif control.jump then
 			vy = 5 * v_mult
@@ -1915,6 +2063,22 @@ function hashimon.step_mounted(self, dtime)
 		if self._arc_bolt_surge_t <= 0 then
 			self._arc_bolt_surge_t = 0
 			self._arc_dash_glow_t = 0.2
+		end
+	end
+
+	-- Water breach: short look-dir surge (E+Space).
+	if (self._water_breach_t or 0) > 0 then
+		self._water_breach_t = self._water_breach_t - dtime
+		local look = self._water_breach_look or rider_obj:get_look_dir() or dir
+		local spd = (profile.water_breach_speed or 40) * dna_speed_mult(creature)
+		vx = look.x * spd
+		vy = look.y * spd
+		vz = look.z * spd
+		self.object:set_acceleration({ x = 0, y = 0, z = 0 })
+		if self._water_breach_t <= 0 then
+			self._water_breach_t = 0
+			self._water_breach_look = nil
+			emit_water_breach_splash(pos)
 		end
 	end
 

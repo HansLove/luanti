@@ -514,6 +514,60 @@ function persistent_map.add_marker_for_player(player_name, pos, name, color_inde
 	return add_marker(player_name, pos, color_index or 1, name)
 end
 
+--- Upsert a marker keyed by a stable API id (`api_<uuid>`), for web↔world sync.
+function persistent_map.upsert_api_marker(player_name, api_id, pos, name, color_index)
+	if not player_data[player_name] then
+		return false, "player not loaded"
+	end
+	if not api_id or api_id == "" then
+		return false, "missing api_id"
+	end
+	if not persistent_map.is_pos_in_bounds(pos) then
+		return false, "Cannot place marker outside the genesis map region"
+	end
+	local markers = player_data[player_name].markers
+	local marker_id = "api_" .. tostring(api_id):gsub("-", "")
+	markers[marker_id] = {
+		x = pos.x,
+		y = pos.y,
+		z = pos.z,
+		color_index = color_index or 1,
+		name = name or "Waypoint",
+		timestamp = os.time(),
+		api_id = api_id,
+	}
+	save_player_markers(player_name, markers)
+	return true, marker_id
+end
+
+--- Drop API-synced markers that are no longer in the active set (by api uuid).
+function persistent_map.prune_api_markers(player_name, keep_ids)
+	if not player_data[player_name] then
+		return 0
+	end
+	local keep = {}
+	if type(keep_ids) == "table" then
+		for _, id in ipairs(keep_ids) do
+			keep[tostring(id)] = true
+		end
+	end
+	local markers = player_data[player_name].markers
+	local removed = 0
+	for mid, marker in pairs(markers) do
+		if type(mid) == "string" and mid:sub(1, 4) == "api_" then
+			local aid = marker.api_id or mid:sub(5)
+			if not keep[tostring(aid)] then
+				markers[mid] = nil
+				removed = removed + 1
+			end
+		end
+	end
+	if removed > 0 then
+		save_player_markers(player_name, markers)
+	end
+	return removed
+end
+
 -- Generate a single map tile with proper coordinate mapping
 local function generate_tile(tile_x, tile_z, callback)
 	local tile_id = get_tile_id(tile_x, tile_z)

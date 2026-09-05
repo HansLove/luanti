@@ -1,6 +1,7 @@
 local modpath = core.get_modpath("hashimon_entities")
 
 dofile(modpath .. "/entities.lua")
+dofile(modpath .. "/tide_wake.lua")
 dofile(modpath .. "/mount.lua")
 dofile(modpath .. "/baby_carry.lua")
 dofile(modpath .. "/voxel_body.lua")

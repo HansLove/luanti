@@ -13,10 +13,12 @@ hashimon_bodies = hashimon_bodies or {}
 
 local FLY_HOLD = 0.18 -- seconds before leaving a special fly clip for base fly
 
--- Mismo criterio que hashimon_entities/mount.lua::node_is_liquid, para que
--- montar y animar coincidan en qué cuenta como "en el agua".
+-- Mismo criterio que hashimon_entities/mount.lua (líquido real + marea efímera).
 local function node_is_liquid(pos)
 	local node = core.get_node(pos)
+	if node.name == "hashimon_entities:tide_wake" then
+		return true
+	end
 	local def = core.registered_nodes[node.name]
 	return def and def.liquidtype and def.liquidtype ~= "none"
 end
@@ -57,7 +59,12 @@ function hashimon_bodies.update_anim_fsm(self, body_def)
 	-- principio y esta función nunca lo consultaba, así que todo el linaje
 	-- Depth se movía bajo el agua con su ciclo de caminar.
 	if caps.swim and anims.swim and node_is_liquid(self.object:get_pos()) then
-		want = "swim"
+		-- Hyper-nado (Sprint/aux1): swim_boost si el cuerpo lo declara.
+		if self._water_hyper and anims.swim_boost then
+			want = "swim_boost"
+		else
+			want = "swim"
+		end
 	elseif caps.fly and anims.fly and (
 		self._mount_fly
 		or horiz > 1.5

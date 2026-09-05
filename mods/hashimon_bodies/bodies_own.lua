@@ -65,19 +65,15 @@ hashimon_bodies.register_creatura_body({
 	family = "dragon",
 	mesh = "hashimon_crown_baby.glb",
 	textures = { "hashimon_crown_baby.png" },
-	-- Rig completo del estándar: los diez huesos, `Tail` incluida. Fue el primer
-	-- asset propio y en su primera versión le faltaba, así que su `tailScale`
-	-- —el rasgo más visible en un dragón— no llegaba a ningún hueso.
+	-- Rig 2026-09: sin Torso/Arm/Leg estándar; Root ancla; cola Tail.2; alas sí.
 	bones = {
-		head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
-		arm_l = "Arm.L", arm_r = "Arm.R",
-		leg_l = "Leg.L", leg_r = "Leg.R",
+		head = "Head", neck = "Neck", torso = "Root", tail = "Tail.2",
 		wing_l = "Wing.L", wing_r = "Wing.R",
 	},
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
 	hitbox = { width = 0.52, height = 0.90 },
-	mesh_height = 3.62,
+	mesh_height = 4.18,
 	makes_footstep_sound = true,
 })
 
@@ -168,8 +164,9 @@ hashimon_bodies.register_creatura_body({
 -- EQUINE — adulto eléctrico (capa V2). Sustituye `road_adult` solo si el
 -- elemento es eléctrico. Resto de elementos siguen con el universal.
 --
--- GLB: adult-road-electric.blend → glb_for_luanti.py --yaw 180 --expect-frames 350
--- --rename Neck.003=Head (el export no traía Head).
+-- GLB: adult-road-electric.glb → glb_for_luanti.py --yaw 180 --expect-frames 350
+-- --rename Neck.003=Head. Socket.Mount animado (sigue el lomo en walk/run);
+-- seat/rot calibrados en idle y validados para que el socket mantenga el asiento.
 -- Clips: idle 1–30, walk 41–70, run 81–110, run_boost 321–350 (sprint/fase).
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
@@ -191,8 +188,8 @@ hashimon_bodies.register_creatura_body({
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
-		seat = { x = 0, y = 0, z = 0 },
-		rot = { x = 0, y = 180, z = 0 },
+		seat = { x = 0.65, y = -1.5, z = 1.1 },
+		rot = { x = 2, y = 210, z = 2 },
 		eye_first = { x = 0, y = 12, z = 2 },
 		eye_third = { x = 0, y = 12, z = -5 },
 		hide_rider = false,
@@ -263,6 +260,50 @@ hashimon_bodies.register_creatura_body({
 	makes_footstep_sound = false,
 })
 
+-- Key ★B genérico (fuego/aire/tierra/eléctrico): cobra terrestre.
+-- Agua usa `key_adult_water` (replaces). Pista hasta 70 → idle/walk.
+hashimon_bodies.register_creatura_body({
+	id = "key_adult",
+	family = "serpentine",
+	mesh = "hashimon_key_adult.glb",
+	textures = { "hashimon_key_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
+	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
+	hitbox = { width = 0.70, height = 1.20 },
+	mesh_height = 13.22,
+	makes_footstep_sound = false,
+})
+
+-- Key ★B agua: serpiente marina. Sustituye a key_adult sólo en agua.
+-- Pista 190 → swim @161; Socket.Mount para montura oceánica.
+hashimon_bodies.register_creatura_body({
+	id = "key_adult_water",
+	family = "serpentine",
+	element = "agua",
+	replaces = "key_adult",
+	mesh = "hashimon_key_adult_water.glb",
+	textures = { "hashimon_key_adult_water.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, swim = 30 }),
+	capabilities = { walk = true, run = false, fly = false, swim = true, mount = true },
+	hitbox = { width = 0.85, height = 1.25 },
+	mesh_height = 16.24,
+	makes_footstep_sound = false,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 18, z = 4 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
+})
+
 -- ---------------------------------------------------------------------------
 -- CHELONIAN — cría de tortuga. Etapa A de Bastion.
 --
@@ -275,6 +316,8 @@ hashimon_bodies.register_creatura_body({
 hashimon_bodies.register_creatura_body({
 	id = "bastion_baby",
 	family = "chelonian",
+	-- Etapa A propia; saca a la tortuga CC BY-SA sin stand del peldaño Genesis.
+	replaces = "chelonian_tortoise",
 	mesh = "hashimon_bastion_baby.glb",
 	textures = { "hashimon_bastion_baby.png" },
 	bones = { head = "Head", torso = "Torso", tail = "Tail",
@@ -284,6 +327,66 @@ hashimon_bodies.register_creatura_body({
 	hitbox = { width = 0.45, height = 0.55 },
 	mesh_height = 2.31,
 	makes_footstep_sound = true,
+})
+
+-- Bastion ★B: tortuga de guerra. Socket.Mount; idle/walk/run (pista 110).
+hashimon_bodies.register_creatura_body({
+	id = "bastion_adult",
+	family = "chelonian",
+	mesh = "hashimon_bastion_adult.glb",
+	textures = { "hashimon_bastion_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	hitbox = { width = 0.85, height = 1.10 },
+	mesh_height = 5.82,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 20, z = 4 },
+		eye_third = { x = 0, y = 14, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
+})
+
+-- Bastion ★B agua: caparazón abisal. Sustituye a bastion_adult sólo en agua.
+-- Fuente: bastion_adult_water.glb → glb_for_luanti --yaw 180 --expect-frames 550
+-- (idle/walk/run + swim @161 + swim_boost @521; sin Neck).
+hashimon_bodies.register_creatura_body({
+	id = "bastion_adult_water",
+	family = "chelonian",
+	element = "agua",
+	replaces = "bastion_adult",
+	mesh = "hashimon_bastion_adult_water.glb",
+	textures = { "hashimon_bastion_adult_water.png" },
+	bones = { head = "Head", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({
+		idle = 30, walk = 30, run = 30, swim = 30, swim_boost = 30,
+	}),
+	capabilities = { walk = true, run = true, fly = false, swim = true, mount = true },
+	hitbox = { width = 0.85, height = 1.10 },
+	mesh_height = 7.21,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = -0.3, y = 1, z = -0.1 },
+		rot = { x = -11, y = 270, z = -15 },
+		eye_first = { x = 0, y = 20, z = 4 },
+		eye_third = { x = 0, y = 14, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
 })
 
 -- ---------------------------------------------------------------------------
@@ -347,6 +450,8 @@ hashimon_bodies.register_creatura_body({
 hashimon_bodies.register_creatura_body({
 	id = "mirror_baby",
 	family = "feline",
+	-- Etapa A propia; saca al gato MIT del peldaño Genesis.
+	replaces = "feline_cat",
 	mesh = "hashimon_mirror_baby.glb",
 	textures = { "hashimon_mirror_baby.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
@@ -355,6 +460,22 @@ hashimon_bodies.register_creatura_body({
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
 	hitbox = { width = 0.30, height = 0.55 },
 	mesh_height = 7.18,
+	makes_footstep_sound = true,
+})
+
+-- Mirror ★B: felino adulto propio. Sustituye thylacoleo; smilodon sigue como C.
+hashimon_bodies.register_creatura_body({
+	id = "mirror_adult",
+	family = "feline",
+	replaces = "feline_thylacoleo",
+	mesh = "hashimon_mirror_adult.glb",
+	textures = { "hashimon_mirror_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = false },
+	hitbox = { width = 0.55, height = 0.90 },
+	mesh_height = 9.57,
 	makes_footstep_sound = true,
 })
 
@@ -501,6 +622,9 @@ hashimon_bodies.register_creatura_body({
 -- ---------------------------------------------------------------------------
 -- CAPA V2 · BLOOM AIRE — oruga y su imago.
 --
+-- Naming estándar de fuente: {familia}_{etapa}[_{tipo}].glb
+--   → bloom_baby_air.glb (familia bloom, etapa baby, variante aire)
+--
 -- Para un Bloom de aire la mantis genérica deja de existir: nace oruga y se
 -- convierte en lo que sale del capullo. Es la primera línea del juego donde el
 -- elemento decide la criatura entera y no sólo su acabado, y encaja con el signo
@@ -509,6 +633,9 @@ hashimon_bodies.register_creatura_body({
 -- El adulto sustituye a `arthropod_wasp`, que además estaba roto: sus tres
 -- animaciones apuntaban al mismo clip de 5 frames, así que ni volaba pese a
 -- declarar `fly`, ni distinguía quieta de andando.
+--
+-- GLB: bloom_baby_air.glb → glb_for_luanti --yaw 180 --expect-frames 470
+-- Carry: perch_neck 361–390 (hombro), perch_head 401–430, pista hasta 470.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "bloom_baby_air",
@@ -524,12 +651,13 @@ hashimon_bodies.register_creatura_body({
 	animations = hashimon_bodies.anims({
 		idle = 30,
 		walk = 30,
+		perch_neck = 30,       -- 361–390 · acomodo hombro (autoría)
 		perch_head = 30,       -- 401–430
 		perch_shoulder = 30,   -- 441–470
 	}),
 	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
 	hitbox = { width = 0.30, height = 0.55 },
-	mesh_height = 0.71,
+	mesh_height = 2.09,
 	makes_footstep_sound = false,
 	-- scale = fracción del tamaño EN EL SUELO (ya se compensa el ×Bob).
 	-- ~0.9 ≈ misma presencia que suelto; 0.32 quedaba “piedrita”.
@@ -539,7 +667,9 @@ hashimon_bodies.register_creatura_body({
 		slots = { "head", "shoulder_r" },
 		anim_by_slot = {
 			head = "perch_head",
-			shoulder_r = "perch_shoulder",
+			-- Clip nuevo en 361–390: el protocolo lo llama perch_neck; en Bloom
+			-- aire es el acomodo de hombro que se revisa en juego.
+			shoulder_r = "perch_neck",
 		},
 	},
 })
