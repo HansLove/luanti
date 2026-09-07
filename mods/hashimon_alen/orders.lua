@@ -66,8 +66,25 @@ function hashimon_alen.apply_order(o)
 		return "rejected", "cargando_salto"
 	end
 
+	-- Un plan que pide el cubo sin energía se rechaza ENTERO y con el motivo
+	-- exacto, en vez de aceptarse para que el verbo falle en silencio a mitad.
+	-- Ese motivo entra en el siguiente prompt del planificador.
+	for _, v in ipairs(o.plan.verbs or {}) do
+		if v.op == "firecube" then
+			local why = hashimon_alen.attack_blocked(live, "firecube")
+			if why == "insufficient_energy" then
+				return "rejected", "insufficient_energy"
+			end
+		end
+	end
+
 	-- La lista blanca de verbos vive en Lua y es la que manda. La API valida
 	-- también, pero por cortesía: aquí es donde se decide.
+	-- El id de la orden viaja DENTRO del plan para que, cuando termine o falle,
+	-- el evento pueda decir de qué orden venía. Sin ese hilo el servidor no puede
+	-- puntuar la habilidad y la biblioteca sólo crece en vez de mejorar.
+	o.plan.origin_id = o.id
+
 	local ok, why = hashimon_alen.set_plan(live, o.plan)
 	if not ok then
 		return "rejected", why
@@ -126,11 +143,23 @@ local function hp_band(hp)
 	if f > 0.66 then return "alto" elseif f > 0.33 then return "medio" else return "bajo" end
 end
 
+local MAX_RELS_IN_REPORT = 5
+
 local function build_digest(live, s)
+	local tier = hashimon_alen.tier()
 	local d = {
 		hp = hp_band(s.hp or 0),
 		modo = live and (live.mode or "?") or "dormido",
 		hora = math.floor((core.get_timeofday() or 0) * 24),
+		-- El vector psicológico, comprimido. El planificador no necesita la
+		-- precisión decimal, necesita saber en qué estado de ánimo escribe.
+		ira = math.floor(s.anger or 0),
+		escalon = tier.name,
+		energia = math.floor(s.energy or 0),
+		fatiga = math.floor(s.fatigue or 0),
+		aburrimiento = math.floor(s.boredom or 0),
+		sueno = math.floor(hashimon_alen.sleep_desire()),
+		despierto = s.awake and true or false,
 	}
 	if live then
 		local pos = live.object:get_pos()
@@ -139,14 +168,16 @@ local function build_digest(live, s)
 			local pp = player:get_pos()
 			if pp then
 				local dist = hashimon_alen.dist(pos, pp)
-				if dist <= hashimon_alen.SIGHT then
+				if dist <= tier.sight then
 					local name = player:get_player_name()
-					local m = hashimon_alen.knows(name)
+					local r = hashimon_alen.knows(name)
 					cerca[#cerca + 1] = {
 						nombre = name,
 						dist = math.floor(dist),
-						conocido = m ~= nil,
-						ultima = m and m.last or nil,
+						relacion = hashimon_alen.relation_label(name),
+						rencor = r and math.floor(r.grudge or 0) or 0,
+						respeto = r and math.floor(r.respect or 0) or 0,
+						ultima = r and r.last_event or nil,
 					}
 				end
 			end
@@ -154,6 +185,10 @@ local function build_digest(live, s)
 		-- Un array vacío de Lua serializa como null, no como []. El planificador
 		-- necesita un número que siempre esté ahí para saber si hay público.
 		d.n_jugadores = #cerca
+		-- Techo: el planificador no necesita el censo, necesita quién está
+		-- delante. Sin este recorte el informe crece con la partida.
+		table.sort(cerca, function(a, b) return a.dist < b.dist end)
+		while #cerca > MAX_RELS_IN_REPORT do table.remove(cerca) end
 		d.jugadores = #cerca > 0 and cerca or nil
 		if live.plan then
 			d.plan = { verbo = live.plan.i, de = #live.plan.verbs }
@@ -193,10 +228,14 @@ core.register_globalstep(function(dtime)
 		pos = s.pos,
 		hp = math.floor(s.hp or 0),
 		maxHp = hashimon_alen.MAX_HP,
-		mood = s.mood,
+		mood = hashimon_alen.mood_label(),
 		observed = live ~= nil,
 		digest = build_digest(live, s),
-		events = events,
+		-- Un array vacío se serializa como {} y zod lo rechaza, tirando el informe
+		-- ENTERO. Como `events` está vacío la mayor parte del tiempo, esto hacía
+		-- que alen_state no se actualizara nunca: `observed` se quedaba en falso y
+		-- la compuerta del planificador bloqueaba todo con "sin_observadores".
+		events = (#events > 0) and events or nil,
 	}, function(ok, _err)
 		report_busy = false
 		if not ok then

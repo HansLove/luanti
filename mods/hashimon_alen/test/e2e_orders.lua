@@ -30,20 +30,30 @@ core.after(0.5, function()
 				if not ok then return finish() end
 				check("la API sirvió las 2 órdenes encoladas", #(list or {}) == 2, #(list or {}))
 
-				local seen = {}
+				-- Se identifican por su CONTENIDO, no por su id: la secuencia de
+				-- Postgres sigue avanzando entre ejecuciones, así que asumir 1 y 2
+				-- sólo funciona con la base recién creada.
+				local legit, evil
 				for _, o in ipairs(list or {}) do
 					local result, detail = hashimon_alen.apply_order(o)
-					seen[o.id] = { result = result, detail = detail }
-					core.log("action", string.format("E2E  orden #%d -> %s (%s)", o.id, result, tostring(detail)))
+					local first_op = o.plan and o.plan.verbs and o.plan.verbs[1]
+						and o.plan.verbs[1].op
+					core.log("action", string.format("E2E  orden #%s (%s) -> %s (%s)",
+						tostring(o.id), tostring(first_op), result, tostring(detail)))
+					if first_op == "exec_lua" then
+						evil = { result = result, detail = detail }
+					else
+						legit = { result = result, detail = detail }
+					end
 					hashimon.ack_alen_order(hashimon.get_server_secret(), o.id, result, detail)
 				end
 
-				check("orden legítima aplicada", seen[1] and seen[1].result == "applied",
-					seen[1] and seen[1].detail)
+				check("orden legítima aplicada", legit and legit.result == "applied",
+					legit and legit.detail)
 				check("EL VERBO exec_lua FUE RECHAZADO POR EL MUNDO",
-					seen[2] and seen[2].result == "rejected"
-					and seen[2].detail == "verbo_no_permitido:exec_lua",
-					seen[2] and seen[2].detail)
+					evil and evil.result == "rejected"
+					and evil.detail == "verbo_no_permitido:exec_lua",
+					evil and evil.detail)
 
 				local live = hashimon_alen._live:get_luaentity()
 				check("el plan legítimo quedó cargado en la entidad",

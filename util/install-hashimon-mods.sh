@@ -19,7 +19,7 @@ else
 fi
 
 mkdir -p "$USER_MODS"
-for mod in hashimon_core hashimon_entities hashimon_bodies hashimon_bodies_dmobs hashimon_village_war hashimon_villain hashimon_ai_brain discovery_maps hashimon_qr_tree hashimon_magi hashimon_space_whales hashimon_players; do
+for mod in hashimon_core hashimon_entities hashimon_bodies hashimon_bodies_dmobs hashimon_village_war discovery_maps hashimon_qr_tree hashimon_magi hashimon_space_whales hashimon_players hashimon_wolkers; do
 	dest="$USER_MODS/$mod"
 	if [[ -L "$dest" || -d "$dest" ]]; then
 		rm -rf "$dest"
@@ -51,11 +51,8 @@ echo "  1. Main menu → game MINETEST (not Hashimon)"
 echo "  2. Open a world (e.g. Hashiworld) or create one with a seed you like"
 echo "  3. Content DB → enable hashimon mods + discovery_maps + hashimon_qr_tree (symlinked) + mg_villages"
 echo "     Required for Bob avatar: hashimon_players"
-echo "     Required for /hv: hashimon_villain, hashimon_ai_brain, hashimon_bodies_dmobs"
 echo "     Add to world.mt if missing:"
 echo "       load_mod_hashimon_players = mods/hashimon_players"
-echo "       load_mod_hashimon_villain = mods/hashimon_villain"
-echo "       load_mod_hashimon_ai_brain = mods/hashimon_ai_brain"
 echo "       load_mod_hashimon_bodies_dmobs = mods/hashimon_bodies_dmobs"
 echo "  4. Start API: cd api && npm run dev"
 echo "  5. In-game: /hashimon session → /hashimon starter → /hashimon sync"

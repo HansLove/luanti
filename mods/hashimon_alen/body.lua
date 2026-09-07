@@ -32,15 +32,16 @@ hashimon_alen.CLIPS = {
 	run         = { first = 81,  last = 110, have = true  },
 	fly         = { first = 121, last = 150, have = true  },
 
-	idle        = { first = 161, last = 220, have = false }, -- respiración, cola, parpadeo
-	hover       = { first = 231, last = 260, have = false }, -- aleteo sostenido en el sitio
-	fly_fast    = { first = 271, last = 300, have = false }, -- crucero rápido / picado
-	hurt        = { first = 311, last = 325, have = false }, -- sacudida corta al recibir daño
-	breath      = { first = 336, last = 365, have = false }, -- cuello atrás y escupir
-	roar        = { first = 376, last = 405, have = false }, -- telegrafía antes de atacar
-	takeoff     = { first = 416, last = 435, have = false }, -- despegue desde el suelo
-	land        = { first = 446, last = 465, have = false }, -- aterrizaje y plegado de alas
-	death       = { first = 476, last = 535, have = false }, -- caída, no cicla
+	idle        = { first = 161, last = 220, have = true  }, -- respiración, cola, parpadeo
+	hover       = { first = 231, last = 260, have = true  }, -- aleteo sostenido en el sitio
+	fly_fast    = { first = 271, last = 300, have = true  }, -- crucero rápido / picado
+	hurt        = { first = 311, last = 325, have = true  }, -- sacudida corta al recibir daño
+	breath      = { first = 336, last = 365, have = true  }, -- cuello atrás y escupir
+	roar        = { first = 376, last = 405, have = true  }, -- telegrafía antes de atacar
+	takeoff     = { first = 416, last = 435, have = true  }, -- despegue desde el suelo
+	land        = { first = 446, last = 465, have = true  }, -- aterrizaje y plegado de alas
+	death       = { first = 476, last = 535, have = true  }, -- caída, no cicla
+	-- Pista llega a 546; el clip completo pide hasta 565 — falta extender en Blender.
 	jump_charge = { first = 546, last = 565, have = false }, -- carga del salto de bloque
 }
 

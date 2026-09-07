@@ -17,15 +17,40 @@ local KEY = "alen_state"
 hashimon_alen.MAX_HP = 400
 
 local DEFAULT = {
+	-- Físico
 	alive = false,      -- ¿Alen existe en el mundo ahora mismo?
 	pos = nil,          -- dónde está, lo esté observando alguien o no
 	yaw = 0,
 	hp = hashimon_alen.MAX_HP,
-	mood = "acecho",    -- etiqueta de intención; la capa del modelo escribirá aquí
-	plan = nil,         -- plan de verbos vigente (lo llenará el canal de órdenes)
-	memory = {},        -- qué jugadores conoce y cómo acabó la última vez
+	plan = nil,         -- plan de verbos vigente (lo llena el canal de órdenes)
 	born_at = nil,
 	last_saved = 0,
+
+	-- Los OCHO campos psicológicos. Ni uno más: todo lo demás (sueño, confianza,
+	-- humor, saciedad) se deriva en psyche.lua. Guardar lo derivable es cómo un
+	-- Alen acaba con fatiga 90 y sueño 5 sin que nadie lo note.
+	energy = 100,
+	anger = 0,
+	fatigue = 0,
+	boredom = 0,
+	destruction_desire = 0,
+	awake = true,
+	slept_at = nil,
+	last_state_update_at = 0,  -- el ancla de la puesta al día offline
+
+	-- Identidad y conocimiento
+	seed = nil,          -- semilla de personalidad; los rasgos se derivan de ella
+	schema_v = 2,
+	known_players = {},  -- SÓLO knowledge.lua escribe aquí
+	last_attacker = nil, -- copia global, únicamente para redactar el WHY
+	last_damage_at = nil,
+	-- Si estaba en el suelo al retirarse. No es derivable: es un hecho sobre el
+	-- mundo. Sin él, un Alen que se durmió en tierra reaparece flotando.
+	grounded = false,
+	current_goal = nil,
+	current_target = nil,
+	goal_since = nil,
+	last_safe_position = nil,
 }
 
 local state
@@ -87,12 +112,23 @@ function hashimon_alen.birth(pos)
 	if s.alive then
 		return false, "ya_existe"
 	end
+	local now = os.time()
 	s.alive = true
 	s.pos = { x = pos.x, y = pos.y, z = pos.z }
 	s.hp = hashimon_alen.MAX_HP
-	s.mood = "acecho"
 	s.plan = nil
-	s.born_at = os.time()
+	s.born_at = now
+
+	-- Un Alen nuevo es una personalidad nueva. La semilla se guarda una sola vez
+	-- y los seis rasgos se derivan de ella con sha256, igual que el ADN de un
+	-- Hashimon: el mismo Alen es siempre el mismo carácter.
+	s.seed = hashimon_alen.new_seed()
+	s.energy = hashimon_alen.MAX_ENERGY
+	s.anger, s.fatigue, s.boredom, s.destruction_desire = 0, 0, 0, 0
+	s.awake = true
+	s.slept_at = now
+	s.last_state_update_at = now
+	s.last_attacker, s.last_damage_at = nil, nil
 	hashimon_alen.save_state()
 	return true
 end
@@ -118,28 +154,11 @@ function hashimon_alen.sync_from_entity(self)
 	end
 	s.yaw = self.object:get_yaw() or 0
 	s.hp = self.hp or s.hp
-	s.mood = self.mood or s.mood
-end
-
---- Lo que Alen recuerda de un jugador. La capa del modelo lee esto y escribe el
---- resultado; en Lua sólo se cuentan los encuentros.
-function hashimon_alen.remember(player_name, outcome)
-	local s = hashimon_alen.load_state()
-	local m = s.memory[player_name]
-	if not m then
-		m = { met = 0, wins = 0, losses = 0, last = nil }
-		s.memory[player_name] = m
-	end
-	m.met = m.met + 1
-	m.last = outcome
-	if outcome == "alen_won" then
-		m.wins = m.wins + 1
-	elseif outcome == "alen_lost" then
-		m.losses = m.losses + 1
+	if hashimon_alen.is_grounded then
+		s.grounded = hashimon_alen.is_grounded(self)
 	end
 end
 
-function hashimon_alen.knows(player_name)
-	local s = hashimon_alen.load_state()
-	return s.memory[player_name]
-end
+-- La memoria por jugador vive ahora en knowledge.lua, que es el ÚNICO fichero
+-- que la escribe. Aquí sólo queda la ficha; lo que Alen sabe tiene su propia
+-- puerta, y esa separación es lo que hace auditable la regla epistémica.

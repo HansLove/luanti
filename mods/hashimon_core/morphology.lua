@@ -581,6 +581,17 @@ function hashimon.compile_morphology(creature)
 	local signature = pick_signature(creature.dna)
 	local archetype = pick_archetype(creature.dna)
 
+	-- Phase-1 DNA tint: only when the body ships a tintmask.
+	--   base^(base^[colorizehsl...^[mask:tintmask)
+	-- Bodies without tintmask keep the authored albedo untouched.
+	local tex_list = body_def.textures or {}
+	local tex_idx = hashimon.morph_texture_index(creature, body_def)
+	local base_tex = tex_list[((tex_idx or 1) - 1) % math.max(#tex_list, 1) + 1]
+	local texture_mod = ""
+	if body_def.tintmask and base_tex then
+		texture_mod = hashimon.texture_mod_masked(base_tex, ramp, body_def.tintmask)
+	end
+
 	return {
 		body_id = body_id,
 		family = body_def.family,
@@ -589,16 +600,8 @@ function hashimon.compile_morphology(creature)
 		generation = generation,
 		look = look,
 		ramp = ramp,
-		texture_index = hashimon.morph_texture_index(creature, body_def),
-		-- Single luminance-preserving recolour. There used to be a second,
-		-- element-derived flat colorize applied on top of this one (element_mod),
-		-- which is what made every Water Hashimon the same blue regardless of its
-		-- DNA. Colour is the individual's axis; the element does not touch it.
-		--
-		-- The optional contrast lift runs FIRST: [colorizehsl tints the luminance
-		-- structure, so a body whose only skins are near-flat needs that structure
-		-- pulled apart before tinting or it renders as one solid blob.
-		texture_mod = contrast_mod(body_def) .. hashimon.texture_mod_from_ramp(ramp),
+		texture_index = tex_idx,
+		texture_mod = texture_mod,
 		visual_size = hashimon.morph_visual_size(creature, look, body_def),
 		proportions = hashimon.derive_proportions(creature.dna, look),
 		attachments = resolve_attachments(signature, element_type, look, stage),

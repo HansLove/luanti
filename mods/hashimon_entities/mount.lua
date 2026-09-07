@@ -93,10 +93,11 @@ hashimon.GENESIS_MOBILITY = {
 		id = "tierra",
 		mode = "ground",
 		cruise = 5,
+		sprint = 9, -- surface only; dig is Sneak+Sprint enter (not electric-tier speed)
 		jump = JUMP_DEFAULT,
 		dig = true,
 		burrow_speed = BURROW_SPEED,
-		hint = "Montado (Tierra) — WASD; MANTÉN Sprint para excavar/túnel (no uses click). Sneak/salto = pendiente. Click derecho para bajar.",
+		hint = "Montado (Tierra) — WASD; Sprint = galope; Sneak+Sprint = excavar/túnel (luego basta Sprint). Sneak/salto bajo tierra = pendiente. Click derecho para bajar.",
 	},
 }
 
@@ -1760,41 +1761,48 @@ function hashimon.step_mounted(self, dtime)
 	local vx, vz = horizontal_velocity(dir, speed, move_fwd)
 	local vy = vel.y
 
-	-- --- Tierra burrow: hold aux1 to carve + travel underground ---
+	-- --- Tierra burrow: Sneak+Sprint enters; Sprint alone keeps tunneling.
+	-- Sprint without sneak on the surface is a modest gallop (profile.sprint), not dig.
 	if profile.dig and control.aux1 then
-		if not self._burrow_hint_sent then
-			self._burrow_hint_sent = true
-			core.chat_send_player(self.rider,
-				"[Hashimon] Excavar = mantener Sprint (no click). El click coloca el ítem del hotbar.")
-		end
-		if not self._mount_burrowing then
+		if control.sneak and not self._mount_burrowing then
+			if not self._burrow_hint_sent then
+				self._burrow_hint_sent = true
+				core.chat_send_player(self.rider,
+					"[Hashimon] Excavar = Sneak+Sprint para entrar; mantén Sprint bajo tierra. Solo Sprint en superficie = galope.")
+			end
 			set_burrow_physics(self, rider_obj, true)
 		end
 
-		local slope = 0
-		if control.sneak then
-			slope = -0.55
-		elseif control.jump then
-			slope = 0.45
-		end
-		hashimon.mount_dig_tunnel(self, rider_obj, dir, dtime, slope)
+		if self._mount_burrowing then
+			-- Prefer dig anim over run_boost while carving.
+			self._mount_run_boost = false
 
-		local burrow = (profile.burrow_speed or BURROW_SPEED) * dna_speed_mult(creature)
-		-- Always push forward while burrowing so you enter the tunnel even if idle.
-		local move = forward
-		if math.abs(move) < 0.05 then
-			move = 1
+			local slope = 0
+			if control.sneak then
+				slope = -0.55
+			elseif control.jump then
+				slope = 0.45
+			end
+			hashimon.mount_dig_tunnel(self, rider_obj, dir, dtime, slope)
+
+			local burrow = (profile.burrow_speed or BURROW_SPEED) * dna_speed_mult(creature)
+			-- Always push forward while burrowing so you enter the tunnel even if idle.
+			local move = forward
+			if math.abs(move) < 0.05 then
+				move = 1
+			end
+			vx, vz = horizontal_velocity(dir, burrow, move)
+			if control.sneak then
+				vy = -BURROW_SLOPE
+			elseif control.jump then
+				vy = BURROW_SLOPE
+			else
+				vy = 0
+			end
+			self.object:set_velocity({ x = vx, y = vy, z = vz })
+			return
 		end
-		vx, vz = horizontal_velocity(dir, burrow, move)
-		if control.sneak then
-			vy = -BURROW_SLOPE
-		elseif control.jump then
-			vy = BURROW_SLOPE
-		else
-			vy = 0
-		end
-		self.object:set_velocity({ x = vx, y = vy, z = vz })
-		return
+		-- Not burrowing: fall through — surface sprint already applied via profile.sprint.
 	elseif profile.dig and self._mount_burrowing then
 		set_burrow_physics(self, rider_obj, false)
 	end

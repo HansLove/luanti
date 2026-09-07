@@ -1,0 +1,677 @@
+{
+  "childDays": 30,
+  "vectors": [
+    {
+      "id": "a50a96a8d5c6be44aad3760831b27d76040d02fc890bc59bc625d04b92ea18aa",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "a50a96a8d5c6be44aad3760831b27d76040d02fc890bc59bc625d04b92ea18aa",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "a50a96a8d5c6be44aad3760831b27d76040d02fc890bc59bc625d04b92ea18aa",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "a50a96a8d5c6be44aad3760831b27d76040d02fc890bc59bc625d04b92ea18aa",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "d85c0b425abbcae42acc7fdeb43ecbb0cc5a816e5cb1b3562fc16ab3f7f56ce7",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d85c0b425abbcae42acc7fdeb43ecbb0cc5a816e5cb1b3562fc16ab3f7f56ce7",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d85c0b425abbcae42acc7fdeb43ecbb0cc5a816e5cb1b3562fc16ab3f7f56ce7",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "d85c0b425abbcae42acc7fdeb43ecbb0cc5a816e5cb1b3562fc16ab3f7f56ce7",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "d07e6ac4972e10648967a3dc3fab0dc1f7315c5b204c74c4c176d0c5891bc244",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d07e6ac4972e10648967a3dc3fab0dc1f7315c5b204c74c4c176d0c5891bc244",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d07e6ac4972e10648967a3dc3fab0dc1f7315c5b204c74c4c176d0c5891bc244",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "d07e6ac4972e10648967a3dc3fab0dc1f7315c5b204c74c4c176d0c5891bc244",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "4acea2c91d1343146416d95ebb213bf666778c788bcf8fc6dcc7d9d422d0408a",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "4acea2c91d1343146416d95ebb213bf666778c788bcf8fc6dcc7d9d422d0408a",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "4acea2c91d1343146416d95ebb213bf666778c788bcf8fc6dcc7d9d422d0408a",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "4acea2c91d1343146416d95ebb213bf666778c788bcf8fc6dcc7d9d422d0408a",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "a9e6a17608e8616a1b5ef1ef574962b8c5d3596eb8e2701cb4dd95dea18d288e",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "a9e6a17608e8616a1b5ef1ef574962b8c5d3596eb8e2701cb4dd95dea18d288e",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "a9e6a17608e8616a1b5ef1ef574962b8c5d3596eb8e2701cb4dd95dea18d288e",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "a9e6a17608e8616a1b5ef1ef574962b8c5d3596eb8e2701cb4dd95dea18d288e",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "cf937ec3556fb1152f62225aea2ea90362a03e3fedf334bc93e1952b89ef5f10",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "cf937ec3556fb1152f62225aea2ea90362a03e3fedf334bc93e1952b89ef5f10",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "cf937ec3556fb1152f62225aea2ea90362a03e3fedf334bc93e1952b89ef5f10",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "cf937ec3556fb1152f62225aea2ea90362a03e3fedf334bc93e1952b89ef5f10",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "53b4c6adba53115ca94752e2ecdbe991288a8bc3a2407fb9e0c4f510d29ec11c",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "53b4c6adba53115ca94752e2ecdbe991288a8bc3a2407fb9e0c4f510d29ec11c",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "53b4c6adba53115ca94752e2ecdbe991288a8bc3a2407fb9e0c4f510d29ec11c",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "53b4c6adba53115ca94752e2ecdbe991288a8bc3a2407fb9e0c4f510d29ec11c",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "58964c0aebcc4d9ed063b82bdcaa4fee4e648faa66e83a706e9c95811346b526",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "58964c0aebcc4d9ed063b82bdcaa4fee4e648faa66e83a706e9c95811346b526",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "58964c0aebcc4d9ed063b82bdcaa4fee4e648faa66e83a706e9c95811346b526",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "58964c0aebcc4d9ed063b82bdcaa4fee4e648faa66e83a706e9c95811346b526",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "27122883bdd0b737207be356a5b2d3097eda591829b830a47731f74ab05a8974",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "27122883bdd0b737207be356a5b2d3097eda591829b830a47731f74ab05a8974",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "27122883bdd0b737207be356a5b2d3097eda591829b830a47731f74ab05a8974",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "27122883bdd0b737207be356a5b2d3097eda591829b830a47731f74ab05a8974",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "f84e24b25cf6dc9b6de6581052622d075f3b164c88517890381a1213c3113b1e",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "f84e24b25cf6dc9b6de6581052622d075f3b164c88517890381a1213c3113b1e",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "f84e24b25cf6dc9b6de6581052622d075f3b164c88517890381a1213c3113b1e",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "f84e24b25cf6dc9b6de6581052622d075f3b164c88517890381a1213c3113b1e",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "889d6041835a5dbc41deebc3c15963bbe9e13a7cca51663d6bc2de87606fdc41",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "889d6041835a5dbc41deebc3c15963bbe9e13a7cca51663d6bc2de87606fdc41",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "889d6041835a5dbc41deebc3c15963bbe9e13a7cca51663d6bc2de87606fdc41",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "889d6041835a5dbc41deebc3c15963bbe9e13a7cca51663d6bc2de87606fdc41",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "ee924de748bc51489fa299a256512b346aed94b1ff98d38ab18c1abdf817aa57",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "ee924de748bc51489fa299a256512b346aed94b1ff98d38ab18c1abdf817aa57",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "ee924de748bc51489fa299a256512b346aed94b1ff98d38ab18c1abdf817aa57",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "ee924de748bc51489fa299a256512b346aed94b1ff98d38ab18c1abdf817aa57",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "037af1556b62c997f52d31046796c09e337bc86f10ca6989e227d4e16f4eda48",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "037af1556b62c997f52d31046796c09e337bc86f10ca6989e227d4e16f4eda48",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "037af1556b62c997f52d31046796c09e337bc86f10ca6989e227d4e16f4eda48",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "037af1556b62c997f52d31046796c09e337bc86f10ca6989e227d4e16f4eda48",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "c1b07209d8a57955d46f8f57d5ddb032e1d3a371634c08077f91c92b7a5aaf7c",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "c1b07209d8a57955d46f8f57d5ddb032e1d3a371634c08077f91c92b7a5aaf7c",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "c1b07209d8a57955d46f8f57d5ddb032e1d3a371634c08077f91c92b7a5aaf7c",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "c1b07209d8a57955d46f8f57d5ddb032e1d3a371634c08077f91c92b7a5aaf7c",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "59540b06d3f7aa46e95f146b0bff5401f409a66d2e17c4e8d00f6fae4dd52eb3",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "59540b06d3f7aa46e95f146b0bff5401f409a66d2e17c4e8d00f6fae4dd52eb3",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "59540b06d3f7aa46e95f146b0bff5401f409a66d2e17c4e8d00f6fae4dd52eb3",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "59540b06d3f7aa46e95f146b0bff5401f409a66d2e17c4e8d00f6fae4dd52eb3",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "70e7851b92fcf79530521d905fda5d888a7c37d478ddeb50e258e14dba448dfb",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "70e7851b92fcf79530521d905fda5d888a7c37d478ddeb50e258e14dba448dfb",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "70e7851b92fcf79530521d905fda5d888a7c37d478ddeb50e258e14dba448dfb",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "70e7851b92fcf79530521d905fda5d888a7c37d478ddeb50e258e14dba448dfb",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "d75fd90a0333afb9d45954c53d016f0d1ee750c06665b41954aa2d0f997513ec",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d75fd90a0333afb9d45954c53d016f0d1ee750c06665b41954aa2d0f997513ec",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d75fd90a0333afb9d45954c53d016f0d1ee750c06665b41954aa2d0f997513ec",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "d75fd90a0333afb9d45954c53d016f0d1ee750c06665b41954aa2d0f997513ec",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "d38e8e801ebdd16111fd8c9b5311ba265c1eb9a368b644c5da10762abfa9b54e",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d38e8e801ebdd16111fd8c9b5311ba265c1eb9a368b644c5da10762abfa9b54e",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "d38e8e801ebdd16111fd8c9b5311ba265c1eb9a368b644c5da10762abfa9b54e",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "d38e8e801ebdd16111fd8c9b5311ba265c1eb9a368b644c5da10762abfa9b54e",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "2f411ac95efc8660eedb747b26d520677a992a7eeb36e3222b0a730646f767f6",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "2f411ac95efc8660eedb747b26d520677a992a7eeb36e3222b0a730646f767f6",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "2f411ac95efc8660eedb747b26d520677a992a7eeb36e3222b0a730646f767f6",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "2f411ac95efc8660eedb747b26d520677a992a7eeb36e3222b0a730646f767f6",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "cf29af466a0140ffb6a0c9c8bcb27f46cfdbc9a4d20180aef6aecc329ee42429",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "cf29af466a0140ffb6a0c9c8bcb27f46cfdbc9a4d20180aef6aecc329ee42429",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "cf29af466a0140ffb6a0c9c8bcb27f46cfdbc9a4d20180aef6aecc329ee42429",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "cf29af466a0140ffb6a0c9c8bcb27f46cfdbc9a4d20180aef6aecc329ee42429",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "9b8e82390aab82bf6d88bc222ba164caa450ccd007d41cf6c43aec5eae8b39b3",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "9b8e82390aab82bf6d88bc222ba164caa450ccd007d41cf6c43aec5eae8b39b3",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "9b8e82390aab82bf6d88bc222ba164caa450ccd007d41cf6c43aec5eae8b39b3",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "9b8e82390aab82bf6d88bc222ba164caa450ccd007d41cf6c43aec5eae8b39b3",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "79c7472de127fe31fed4352bd7fda042d430a68a4e23543b433dd776534d4256",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "79c7472de127fe31fed4352bd7fda042d430a68a4e23543b433dd776534d4256",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "79c7472de127fe31fed4352bd7fda042d430a68a4e23543b433dd776534d4256",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "79c7472de127fe31fed4352bd7fda042d430a68a4e23543b433dd776534d4256",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "a533c3347b25b19bab7f56419866fe33418dd7d8d4a4ff575b496e7624bfeb58",
+      "ageDays": 0,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "a533c3347b25b19bab7f56419866fe33418dd7d8d4a4ff575b496e7624bfeb58",
+      "ageDays": 29,
+      "sign": 1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "a533c3347b25b19bab7f56419866fe33418dd7d8d4a4ff575b496e7624bfeb58",
+      "ageDays": 30,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "a533c3347b25b19bab7f56419866fe33418dd7d8d4a4ff575b496e7624bfeb58",
+      "ageDays": 400,
+      "sign": 1,
+      "stage": "adult",
+      "model": "wolker_pos"
+    },
+    {
+      "id": "231cb457d6bf898e65835593b2666ab31b444341c927ff5475eaa39b5f8f1e98",
+      "ageDays": 0,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "231cb457d6bf898e65835593b2666ab31b444341c927ff5475eaa39b5f8f1e98",
+      "ageDays": 29,
+      "sign": -1,
+      "stage": "child",
+      "model": "wolker_small"
+    },
+    {
+      "id": "231cb457d6bf898e65835593b2666ab31b444341c927ff5475eaa39b5f8f1e98",
+      "ageDays": 30,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    },
+    {
+      "id": "231cb457d6bf898e65835593b2666ab31b444341c927ff5475eaa39b5f8f1e98",
+      "ageDays": 400,
+      "sign": -1,
+      "stage": "adult",
+      "model": "wolker_neg"
+    }
+  ]
+}

@@ -15,17 +15,32 @@ Depends: `player_api`, `hashimon_core`.
 
 ## Bob clips (`hashimon_bob.glb`)
 
-| Clip | Frames |
-|------|--------|
-| stand (idle) | 0–31 |
-| walk | 41–70 |
-| sit | 71–80 (art aimed 71–90; re-export when sit is extended) |
+24 fps. Inicio fijo, presupuesto ~30, hueco 10 (igual que cuerpos). stand/walk/sit
+no se mueven. Clips 81–310: movilidad por Hashimon en hombro / impacto.
 
-Track may extend past 80 (e.g. to 390); player_api only uses the clips above.
+| Clip | Frames | Tipo | Uso |
+|------|--------|------|-----|
+| stand (idle) | 0–31 | ciclo | `player_api` |
+| walk | 41–70 | ciclo | `player_api` |
+| sit | 71–80 | ciclo corto | `player_api` (arte apuntaba 71–90) |
+| run | 81–110 | ciclo | trote / sprint en suelo |
+| fly | 121–150 | ciclo | vuelo de crucero |
+| float | 161–190 | ciclo | hover en el sitio |
+| takeoff | 201–230 | once | despegue |
+| land | 241–270 | once | aterrizaje |
+| impact_yeet | 281–310 | once | salir disparado por impacto alto |
+
+Reserva / sockets: **311–390**. `player_api` solo usa stand/walk/sit/mine/lay;
+los demás quedan registrados para override cuando un baby en hombro otorgue poder.
 
 Source: `Documents/Blender/bob.glb` →
-`scripts/glb_for_luanti.py --fps 24 --expect-frames 390 --yaw 180`
-(Luanti third-person expects the mesh facing −Z; without `--yaw 180` Bob looks at the camera.)
+
+```
+scripts/glb_for_luanti.py bob.glb out.glb --fps 24 --yaw 180 --expect-frames 310
+```
+
+(Usa `--expect-frames 390` si la pista ya cubre sockets más allá de 310.
+Sin `--yaw 180` Bob mira a la cámara en 3ª persona.)
 
 ## Commands
 

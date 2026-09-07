@@ -55,19 +55,63 @@ end
 
 hashimon_alen.terrain_ahead = terrain_ahead
 
---- Distancia al suelo bajo `pos`, hasta `max` nodos. nil si no hay suelo (o el
---- mapblock no está cargado, que a efectos de vuelo es lo mismo: no bajes).
-function hashimon_alen.floor_below(pos, max)
+--- Distancia al suelo bajo `pos`, hasta `max` nodos.
+---
+--- `tolerate_unloaded` cambia qué significa encontrarse un mapblock sin cargar:
+---   false (por defecto) → devuelve nil. Es lo correcto para VOLAR: no se
+---     desciende hacia espacio desconocido.
+---   true → lo salta y sigue buscando. Es lo correcto para PLANIFICAR: volando
+---     alto, el aire por encima del área cargada no lo está, y abortar ahí hacía
+---     que toda ruta terrestre saliera inviable... lo que lo mantenía volando.
+---     Un bucle que se alimentaba a sí mismo, y la última causa de "vuela mucho".
+function hashimon_alen.floor_below(pos, max, tolerate_unloaded)
 	max = max or 40
 	for i = 1, max do
 		local p = { x = pos.x, y = pos.y - i, z = pos.z }
 		local node = core.get_node_or_nil(p)
 		if not node then
-			return nil
+			if not tolerate_unloaded then
+				return nil
+			end
+			node = nil -- sin cargar: se salta y se sigue mirando hacia abajo
 		end
-		local def = core.registered_nodes[node.name]
+		local def = node and core.registered_nodes[node.name]
 		if def and def.walkable then
 			return i
+		end
+	end
+	return nil
+end
+
+--- ¿Está el nodo en `pos` dentro de un líquido?
+function hashimon_alen.node_is_liquid(pos)
+	local node = core.get_node_or_nil(pos)
+	local def = node and core.registered_nodes[node.name]
+	return def and def.liquidtype and def.liquidtype ~= "none" or false
+end
+
+--- ¿Está METIDO en terreno sólido? Se mira a la altura del pecho, no a los pies:
+--- a los pies siempre hay suelo cuando camina.
+function hashimon_alen.is_buried(pos)
+	if not pos then return false end
+	local node = core.get_node_or_nil({ x = pos.x, y = pos.y + 1.5, z = pos.z })
+	local def = node and core.registered_nodes[node.name]
+	return (def and def.walkable) or false
+end
+
+--- Primer punto de aire libre por encima. Es la salida de emergencia cuando queda
+--- enterrado: preferimos un reposicionamiento feo a un dragón clavado para siempre.
+function hashimon_alen.first_air_above(pos, max)
+	for i = 1, (max or 30) do
+		local p = { x = pos.x, y = pos.y + i, z = pos.z }
+		local n = core.get_node_or_nil(p)
+		if n then
+			local d = core.registered_nodes[n.name]
+			local n2 = core.get_node_or_nil({ x = p.x, y = p.y + 3, z = p.z })
+			local d2 = n2 and core.registered_nodes[n2.name]
+			if (not d or not d.walkable) and (not d2 or not d2.walkable) then
+				return p
+			end
 		end
 	end
 	return nil

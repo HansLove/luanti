@@ -367,9 +367,6 @@ local function carry_blocked(name)
 	if hashimon._evolve_rituals and hashimon._evolve_rituals[name] then
 		return "busy"
 	end
-	if hashimon_villain and hashimon_villain.possessions and hashimon_villain.possessions[name] then
-		return "possessed"
-	end
 	return nil
 end
 
@@ -380,8 +377,6 @@ local function carry_err_msg(err)
 		return "Espera a terminar el impacto."
 	elseif err == "busy" then
 		return "Hay un ritual en curso."
-	elseif err == "possessed" then
-		return "No puedes cargar mientras estás poseído."
 	elseif err == "already_carrying" then
 		return "Ya llevas un baby. Suelta con click o /hashimon carry off."
 	elseif err == "not_carryable" then

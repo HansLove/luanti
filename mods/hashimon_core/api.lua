@@ -342,6 +342,31 @@ function hashimon.push_map_tile(secret, payload, callback)
 	end)
 end
 
+-- Push the WHOLE set of Vibing towers (replace-all) so the web map can draw them.
+-- A display projection; the world owns where a tower physically is. Server-secret authed.
+-- Empty Lua tables serialize as JSON null (lua_api.md); the API expects an array, so
+-- coerce "towers":null → "towers":[] for the zero-tower replace-all case.
+function hashimon.push_vibing_towers(secret, payload, callback)
+	local data = core.write_json(payload)
+	if data then
+		data = data:gsub('"towers"%s*:%s*null', '"towers":[]')
+	end
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-vibing-towers",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = data,
+	}, function(res)
+		if not res.completed then if callback then callback(false, "request_incomplete") end; return end
+		if res.code ~= 200 then if callback then callback(false, http_failure_code(res)) end; return end
+		if callback then callback(true, nil) end
+	end)
+end
+
 -- Poll the API for pending town political actions (co-mayor promote/demote made on
 -- the website). callback(ok, err, actions) — actions is a list the world re-validates
 -- and applies in Towny. Server-secret authed.
@@ -532,5 +557,114 @@ function hashimon.push_alen_state(secret, payload, callback)
 		if not res.completed then callback(false, "request_incomplete"); return end
 		if res.code ~= 200 then callback(false, http_failure_code(res)); return end
 		callback(true, nil)
+	end)
+end
+
+--- Alguien le habló a Alen estando cerca. A diferencia de las órdenes, esta ruta
+--- se espera SÍNCRONA del lado servidor: una conversación con latencia de minutos
+--- no es una conversación. callback(ok, err, reply).
+function hashimon.alen_chat(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-alen-chat",
+		method = "POST",
+		timeout = 12,
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then callback(false, "request_incomplete", nil); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res), nil); return end
+		local body = parse_json_or_nil(res.data)
+		if not body then callback(false, "invalid_response", nil); return end
+		if not body.replied then callback(false, body.why or "no_reply", nil); return end
+		-- La valoración (ego, interés, respeto, intención) viaja con la frase: el
+		-- mundo la aplica al estado de Alen.
+		callback(true, nil, body.reply, body.appraisal)
+	end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Wolkers (docs/WOLKERS_V1.md, Fase 1). El censo es del servidor; el mundo pide a quién
+-- dar cuerpo y devuelve lo único que sólo él sabe: dónde acabó cada uno y quién cayó
+-- peleando. Ninguna de estas llamadas puede crear población.
+-- ---------------------------------------------------------------------------
+
+function hashimon.fetch_wolkers(secret, town, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-wolkers?town=" .. core.urlencode(town),
+		method = "GET",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Accept", "application/json" },
+		}),
+	}, function(res)
+		if not res.completed then callback(false, "request_incomplete", nil); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res), nil); return end
+		local body = parse_json_or_nil(res.data)
+		if not body or not body.wolkers then callback(false, "bad_response", nil); return end
+		callback(true, nil, body.wolkers)
+	end)
+end
+
+-- Pide la camada genesis de un town recién fundado. Idempotente por homeblock en el
+-- servidor, así que reintentar es seguro: la segunda vez devuelve una lista vacía.
+function hashimon.request_wolker_genesis(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-wolkers-genesis",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then if callback then callback(false, "request_incomplete", nil) end; return end
+		if res.code ~= 200 then if callback then callback(false, http_failure_code(res), nil) end; return end
+		local body = parse_json_or_nil(res.data)
+		if callback then callback(true, nil, body and body.granted or {}) end
+	end)
+end
+
+function hashimon.push_wolker_deltas(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-wolkers-sync",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then if callback then callback(false, "request_incomplete") end; return end
+		if res.code ~= 200 then if callback then callback(false, http_failure_code(res)) end; return end
+		if callback then callback(true, nil) end
+	end)
+end
+
+-- El consejo del town. SIEMPRE contesta algo aplicable: si el servidor no tiene modelo,
+-- o gastó el presupuesto, devuelve su regla determinista. El mundo no distingue una de
+-- otra — aplica `posture` y espera `ttlS`. Si la petición entera falla, el mod se queda
+-- con la postura que ya tenía; nunca se queda sin postura.
+function hashimon.ask_wolker_council(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-wolkers-council",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then callback(false, "request_incomplete", nil); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res), nil); return end
+		local body = parse_json_or_nil(res.data)
+		if not body or not body.posture then callback(false, "bad_response", nil); return end
+		callback(true, nil, body)
 	end)
 end

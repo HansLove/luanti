@@ -22,6 +22,8 @@
 --     perch_back      481     30 frames   no  (baby carry: mochila)
 --     swim_boost      521     30 frames   no  (Sprint/aux1 hyper-nado en montura agua;
 --                                              p.ej. Bastion agua — NO es swim ni run_boost)
+--     dig             561     30 frames   no  (hold Sprint/aux1 excavando en montura tierra;
+--                                              p.ej. Road tierra — NO es run_boost)
 --
 -- Brief animador aéreo: fly_rocket = alas plegadas / cuerpo vertical arriba;
 -- fly_dive = nose-down, alas retraídas. Si el GLB no tiene el clip, no lo
@@ -40,6 +42,12 @@
 -- Brief animador acuático: swim_boost = ciclo de hyper-nado (aletas/caparazón
 -- más agresivo). Hasta que el GLB llegue al frame 550, declara sólo swim;
 -- el FSM usa `swim` (o `run`/`walk`) como fallback.
+--
+-- Brief animador tierra: dig = ciclo de excavación / avance en túnel (hocico o
+-- pezuñas empujando tierra, torso bajo). La capacidad de borrar nodos la
+-- concede el elemento en mount.lua; el clip es opcional. Hasta que el GLB
+-- llegue al frame 590, declara sólo idle/walk/run; el FSM usa `walk` (o `run`)
+-- como fallback mientras `_mount_burrowing`.
 --
 --     inicio del clip n = 1 + 40*(n-1)
 --
@@ -86,6 +94,7 @@ hashimon_bodies.ANIM_START = {
 	perch_shoulder = 441,
 	perch_back = 481,
 	swim_boost = 521,
+	dig = 561,
 }
 
 hashimon_bodies.ANIM_BUDGET = 30
@@ -99,7 +108,7 @@ local ORDER = {
 	"idle", "walk", "run", "fly", "swim",
 	"fly_boost", "fly_rocket", "fly_dive", "run_boost",
 	"perch_neck", "perch_head", "perch_shoulder", "perch_back",
-	"swim_boost",
+	"swim_boost", "dig",
 }
 
 --- Tabla `animations` a partir de la LONGITUD de cada clip.

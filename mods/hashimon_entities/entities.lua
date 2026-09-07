@@ -150,24 +150,13 @@ function hashimon.texture_color_for_creature(creature)
 	return TYPE_COLORS[elem] or "888888"
 end
 
---- Recolour a creature's body texture from its DNA.
+--- Legacy companion recolour hook.
 ---
---- The element is NOT consulted. This used to return a flat
---- "[colorize:<element colour>:180", which painted 70% of a solid element hue
---- over every pixel — every Water Hashimon came out the same blue, and the eyes,
---- muzzle and fur shading painted into the texture were flattened away.
---- hashimon.texture_mod_from_ramp uses [colorizehsl, which preserves luminance.
----
---- Falls back to the flat element tint only when the DNA compiler is unavailable
---- or the DNA is unusable, so a creature is never left untinted.
+--- Phase-1 DNA paint lives on morphology bodies via `body_def.tintmask` +
+--- `hashimon.texture_mod_masked`. This path has no body_def, so it never
+--- global-tints (no mask → no paint).
 function hashimon.texture_mod_for_creature(creature)
-	if creature and creature.dna and hashimon.compile_look and hashimon.texture_mod_from_ramp then
-		local look = hashimon.compile_look(creature.dna, hashimon.type_for_creature(creature))
-		if look then
-			return hashimon.texture_mod_from_ramp(hashimon.derive_color_ramp(look))
-		end
-	end
-	return "^[colorize:#" .. hashimon.texture_color_for_creature(creature) .. ":180"
+	return ""
 end
 
 --- Stage-driven size multiplier, where 1.0 means "the size the source mob was

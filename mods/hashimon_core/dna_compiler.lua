@@ -225,6 +225,29 @@ function hashimon.texture_mod_from_ramp(ramp)
 		math.floor(hue + 0.5), math.floor(base.s + 0.5), math.floor(light + 0.5))
 end
 
+--- Phase-1 masked DNA tint for Luanti.
+---
+--- Full texture becomes:
+---   base^(base^[colorizehsl:H:S:L^[mask:tintmask)
+--- i.e. mix(albedo, tinted, mask_alpha) via overlay.
+---
+--- The tintmask must be authored as RGB white with alpha = tint weight
+--- (255 = fully tintable, 0 = protected). A plain grayscale RGB mask with
+--- opaque black will punch opaque black holes — convert with scripts if needed.
+---
+--- Without a tintmask, returns "" (do not paint).
+--- @param base_tex string e.g. "hashimon_hearth_baby.png"
+--- @param ramp table from derive_color_ramp
+--- @param tintmask string|nil texture name in the mod
+function hashimon.texture_mod_masked(base_tex, ramp, tintmask)
+	if not base_tex or base_tex == "" or not tintmask or tintmask == "" or not ramp then
+		return ""
+	end
+	local hsl = hashimon.texture_mod_from_ramp(ramp)
+	-- hsl is "^[colorizehsl:..."; append mask, wrap as overlay layer.
+	return string.format("^(%s%s^[mask:%s)", base_tex, hsl, tintmask)
+end
+
 -- ---------------------------------------------------------------------------
 -- Material -> surface (mirrors procedural-core.ts's materialSurface, minus
 -- the roughness/metalness fields Luanti's engine doesn't expose per-entity;

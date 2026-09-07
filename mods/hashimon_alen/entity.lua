@@ -9,10 +9,9 @@ hashimon_alen = hashimon_alen or {}
 hashimon_alen.ENTITY = "hashimon_alen:alen_gregory"
 hashimon_alen._live = nil -- la única entidad viva; el candado en memoria
 
-local BREATH_COOLDOWN = 2.6
-local BREATH_SPEED = 22
-local BREATH_DAMAGE = 9
-local BREATH_TTL = 3.5
+-- Los números del aliento viven en hashimon_alen.ATTACKS.breath (attacks.lua).
+-- Estos locales son sólo atajos de lectura para el paso del proyectil.
+local function BA() return hashimon_alen.ATTACKS.breath end
 
 -- ---------------------------------------------------------------------------
 -- Aliento
@@ -33,7 +32,7 @@ core.register_entity("hashimon_alen:breath", {
 	on_step = function(self, dtime)
 		self._age = self._age + dtime
 		local pos = self.object:get_pos()
-		if self._age > BREATH_TTL or not pos then
+		if self._age > BA().ttl or not pos then
 			self.object:remove()
 			return
 		end
@@ -52,7 +51,7 @@ core.register_entity("hashimon_alen:breath", {
 		end
 		for _, obj in ipairs(core.get_objects_inside_radius(pos, 2.0)) do
 			if obj:is_player() then
-				obj:set_hp((obj:get_hp() or 20) - BREATH_DAMAGE)
+				obj:set_hp((obj:get_hp() or 20) - BA().damage)
 				self.object:remove()
 				return
 			end
@@ -65,7 +64,16 @@ function hashimon_alen.try_breath(self, target)
 		return false
 	end
 	local now = core.get_gametime()
-	if self._breath_cd and now - self._breath_cd < BREATH_COOLDOWN then
+	-- El enfriamiento se acorta con la ira: el mismo ataque, llegando el doble de
+	-- seguido. Es una de las formas en que golpear a Alen se NOTA.
+	local tname = target.get_player_name and target:get_player_name() or nil
+	if self._breath_cd and now - self._breath_cd < hashimon_alen.cooldown_for("breath", tname) then
+		return false
+	end
+	-- El aliento es el ataque MENOR: barato, así que sigue disponible con la
+	-- energía baja. Alen sin energía puede pelear; lo que no puede es arrasar.
+	if not hashimon_alen.spend_energy(BA().energy_cost) then
+		hashimon_alen.say("ON_LOW_ENERGY")
 		return false
 	end
 	self._breath_cd = now
@@ -83,7 +91,7 @@ function hashimon_alen.try_breath(self, target)
 	}
 	local obj = core.add_entity(spawn, "hashimon_alen:breath")
 	if obj then
-		obj:set_velocity(vector.multiply(dir, BREATH_SPEED))
+		obj:set_velocity(vector.multiply(dir, BA().speed))
 	end
 	hashimon_alen.play_oneshot(self, "breath")
 	core.sound_play("fire_fire", { pos = pos, gain = 0.8, max_hear_distance = 40 }, true)
@@ -127,12 +135,24 @@ core.register_entity(hashimon_alen.ENTITY, {
 		end
 		hashimon_alen._live = self.object
 
+		-- Lo primero, antes de leer un solo número: resolver el tiempo que pasó
+		-- sin observadores. Sin esto, Alen vuelve exactamente igual de furioso
+		-- que cuando te fuiste hace ocho horas.
+		hashimon_alen.catch_up()
+
 		local s = hashimon_alen.get_state()
 		self.hp = s.hp or hashimon_alen.MAX_HP
-		self.mood = s.mood or "acecho"
 		self.plan = s.plan
 		self.object:set_armor_groups({ fleshy = 70 })
-		self.object:set_acceleration({ x = 0, y = 0, z = 0 }) -- vuela: sin gravedad
+		-- La gravedad ya no es fija: la conmuta la locomoción al cruzar entre
+		-- tierra y aire. Aquí sólo se restaura el estado con el que se retiró.
+		self._loco_mode = s.grounded and "GROUND_IDLE" or "FLY"
+		self._loco_since = core.get_gametime()
+		self._airborne = not s.grounded
+		self._airborne_since = s.grounded and nil or core.get_gametime()
+		self.object:set_acceleration(s.grounded
+			and { x = 0, y = -9.8, z = 0 } or { x = 0, y = 0, z = 0 })
+		self._landing = s.grounded and true or false
 		self.object:set_yaw(s.yaw or 0)
 		self.object:set_nametag_attributes({
 			text = "Alen Gregory",
@@ -163,7 +183,7 @@ core.register_entity(hashimon_alen.ENTITY, {
 			self._dying = math.max(hashimon_alen.state_duration("death"), 0.6)
 			hashimon_alen.play_oneshot(self, "death")
 			if self._killer then
-				hashimon_alen.remember(self._killer, "alen_lost")
+				hashimon_alen.alen_learn({ kind = "defeated_me", who = self._killer })
 			end
 			if hashimon_alen.note_event then
 				hashimon_alen.note_event("derrotado", self._killer, {})
@@ -172,6 +192,7 @@ core.register_entity(hashimon_alen.ENTITY, {
 		end
 
 		hashimon_alen.think(self, dtime)
+		hashimon_alen.check_tier_change()
 
 		self._save_acc = (self._save_acc or 0) + dtime
 		if self._save_acc > 5 then
@@ -186,20 +207,66 @@ core.register_entity(hashimon_alen.ENTITY, {
 			and tool_caps.damage_groups.fleshy) or 1
 		self.hp = self.hp - dmg
 		hashimon_alen.play_oneshot(self, "hurt")
-		-- Cruzar la mitad de la vida es novedad; recibir el golpe número 40 no.
-		-- El umbral es lo que separa un disparo útil de una factura.
-		if not self._half_reported and self.hp <= hashimon_alen.MAX_HP * 0.5 then
-			self._half_reported = true
-			if hashimon_alen.note_event then
-				hashimon_alen.note_event("herido", puncher and puncher:is_player()
-					and puncher:get_player_name() or nil, { hp = math.floor(self.hp) })
+
+		local s = hashimon_alen.get_state()
+		local was_asleep = not s.awake
+		local combo = s.last_damage_at and (os.time() - s.last_damage_at) <= 6
+
+		if not (puncher and puncher:is_player()) then
+			return true
+		end
+		local who = puncher:get_player_name()
+		self._target = puncher
+		self._killer = who
+		self._tactic_acc = 99 -- decisión táctica inmediata, sin esperar al tick
+
+		hashimon_alen.alen_learn({
+			kind = "attacked_me", who = who,
+			damage = dmg, asleep = was_asleep, combo = combo,
+		})
+
+		-- Encararlo. Un dragón al que golpean y sigue mirando a otro lado es la
+		-- razón número uno por la que parece que "no hizo nada".
+		local pos, ppos = self.object:get_pos(), puncher:get_pos()
+		if pos and ppos then
+			self.object:set_yaw(-math.atan2(ppos.x - pos.x, ppos.z - pos.z))
+		end
+
+		-- La violencia termina la conversación. No se puede estar charlando con
+		-- alguien que te está pegando.
+		if hashimon_alen.convo and hashimon_alen.convo.who == who then
+			hashimon_alen.convo_close("atacado")
+		end
+		self._depart_until = nil -- y cancela cualquier retirada en curso
+
+		local fight = hashimon_alen.register_hit(self, who, dmg)
+
+		if was_asleep then
+			hashimon_alen.wake_up("golpeado")
+			hashimon_alen.say("ON_SLEEP_INTERRUPTED", { force = true }, { name = who })
+			hashimon_alen.note_event("despertado_a_golpes", who, { dano = math.floor(dmg) })
+
+		elseif hashimon_alen.should_rage(self) then
+			-- El acontecimiento. Se cruzó el umbral de daño en este combate y lo
+			-- que viene es el cubo. Una vez por pelea, para que conserve su peso.
+			hashimon_alen.say("ON_RAGE", { force = true }, { name = who })
+			hashimon_alen.begin_firecube(self, puncher)
+			hashimon_alen.note_event("furia", who, {
+				dano_acumulado = math.floor(fight.damage), golpes = fight.hits,
+			})
+
+		else
+			-- Escalada: la primera vez no suena como la cuarta.
+			hashimon_alen.say(hashimon_alen.attacked_category(fight.hits),
+				{ force = fight.hits == 1 }, { name = who, n = fight.hits })
+			if fight.hits == 1 then
+				hashimon_alen.play_oneshot(self, "roar") -- el primer golpe se acusa
 			end
 		end
-		if puncher and puncher:is_player() then
-			self._target = puncher
-			self._killer = puncher:get_player_name()
-			self._tactic_acc = 99 -- fuerza una decisión táctica inmediata
-			hashimon_alen.remember(puncher:get_player_name(), "golpeo")
+
+		if not self._half_reported and self.hp <= hashimon_alen.MAX_HP * 0.5 then
+			self._half_reported = true
+			hashimon_alen.note_event("herido", who, { hp = math.floor(self.hp) })
 		end
 		return true
 	end,

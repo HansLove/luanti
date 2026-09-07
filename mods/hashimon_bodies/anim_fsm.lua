@@ -1,4 +1,5 @@
--- Animation state machine: idle / walk / run / swim / fly from velocity.
+-- Animation state machine: idle / walk / run / swim / fly / dig from velocity
+-- and mount flags (_mount_burrowing, _mount_run_boost, fly specials, …).
 --
 -- Fly mounts often hover nearly still (gravity 0). Without treating `_mount_fly`
 -- as "in flight", the FSM falls through to stand/idle and the wings freeze in
@@ -81,6 +82,17 @@ function hashimon_bodies.update_anim_fsm(self, body_def)
 			want = "fly_boost"
 		else
 			want = "fly"
+		end
+	elseif self._mount_burrowing then
+		-- Tierra: hold Sprint while carving a tunnel. dig → walk → run → stand.
+		if anims.dig then
+			want = "dig"
+		elseif anims.walk then
+			want = "walk"
+		elseif anims.run then
+			want = "run"
+		else
+			want = "stand"
 		end
 	elseif self._mount_run_boost
 		and anims.run_boost then

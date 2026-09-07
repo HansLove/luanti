@@ -18,21 +18,24 @@ Hay 10 frames de hueco entre clip y clip a propósito: la mezcla (`blend`) de
 Luanti interpola hacia el frame destino, y sin margen sangra el final de un clip
 sobre el principio del siguiente.
 
-| Clip | Frames Blender | Dur. | Cicla | Qué es |
+**Estado: 12 de 13 autorados.** Sólo falta `jump_charge`, que mientras tanto cae a
+`roar` — el salto se telegrafía igual, con el clip equivocado.
+
+| Clip | Frames Blender | Dur. | Cicla | Estado |
 |---|---|---|---|---|
-| `walk` | 41 – 70 | 1.25 s | sí | ✅ ya está |
-| `run` | 81 – 110 | 1.25 s | sí | ✅ ya está |
-| `fly` | 121 – 150 | 1.25 s | sí | ✅ ya está |
-| `idle` | 161 – 220 | 2.50 s | sí | Respiración, cola, parpadeo. Largo a propósito: es lo que más se ve. |
-| `hover` | 231 – 260 | 1.25 s | sí | Aleteo sostenido sin avanzar. Lo usa al encarar antes de escupir. |
-| `fly_fast` | 271 – 300 | 1.25 s | sí | Alas plegadas, cuerpo estirado. Se reproduce a 1.9×. |
-| `hurt` | 311 – 325 | 0.63 s | no | Sacudida corta. Corto es mejor: interrumpe lo que esté haciendo. |
-| `breath` | 336 – 365 | 1.25 s | no | Cuello atrás y escupir. El fuego sale a mitad del clip. |
-| `roar` | 376 – 405 | 1.25 s | no | Telegrafía. Se dispara **antes** del primer aliento contra alguien. |
-| `takeoff` | 416 – 435 | 0.83 s | no | Despegue desde el suelo. |
-| `land` | 446 – 465 | 0.83 s | no | Aterrizaje y plegado de alas. |
-| `death` | 476 – 535 | 2.50 s | **no** | La caída. Debe terminar en pose de suelo — no cicla y se queda en el último frame. |
-| `jump_charge` | 546 – 565 | 0.83 s | no | Carga del salto de bloque. Al terminar, desaparece. |
+| `walk` | 41 – 70 | 1.25 s | sí | ✅ |
+| `run` | 81 – 110 | 1.25 s | sí | ✅ |
+| `fly` | 121 – 150 | 1.25 s | sí | ✅ |
+| `idle` | 161 – 220 | 2.50 s | sí | ✅ |
+| `hover` | 231 – 260 | 1.25 s | sí | ✅ |
+| `fly_fast` | 271 – 300 | 1.25 s | sí | ✅ |
+| `hurt` | 311 – 325 | 0.63 s | no | ✅ |
+| `breath` | 336 – 365 | 1.25 s | no | ✅ |
+| `roar` | 376 – 405 | 1.25 s | no | ✅ |
+| `takeoff` | 416 – 435 | 0.83 s | no | ✅ |
+| `land` | 446 – 465 | 0.83 s | no | ✅ |
+| `death` | 476 – 535 | 2.50 s | **no** | ✅ |
+| `jump_charge` | 546 – 565 | 0.83 s | no | ⬜ **pendiente** — cae a `roar` |
 
 Los que ciclan **tienen que verse idénticos en el primer y el último frame**: Luanti
 no interpola de vuelta al inicio en un bucle, así que una diferencia ahí se ve como

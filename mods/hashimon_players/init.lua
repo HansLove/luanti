@@ -14,8 +14,9 @@ local TEX_BOB = "hashimon_bob.png"
 -- Mesh height ~6.15 glTF units → human ~1.7 nodes ⇒ visual_size ≈ 2.76
 local BOB_VISUAL = 2.76
 
--- Clips from bob.glb (track to frame 390; locomotion still stand/walk/sit).
--- Extra frames 81–390 reserved / authored; sit remains 71–80 until sit art extends.
+-- Clips from bob.glb (24 fps). stand/walk/sit: player_api locomotion.
+-- Mobility 81–310: shoulder-power / impact (run, fly, float, takeoff, land,
+-- impact_yeet). Sockets / reserva 311–390. Export --expect-frames 310 (or 390).
 local BOB_ANIMS = {
 	stand = { x = 0, y = 31 },
 	walk = { x = 41, y = 70 },
@@ -35,6 +36,13 @@ local BOB_ANIMS = {
 		override_local = true,
 		collisionbox = { -0.6, 0.0, -0.6, 0.6, 0.3, 0.6 },
 	},
+	-- Extended mobility (Hashimon on shoulder / high-power impact).
+	run = { x = 81, y = 110 },
+	fly = { x = 121, y = 150 },
+	float = { x = 161, y = 190 },
+	takeoff = { x = 201, y = 230 },
+	land = { x = 241, y = 270 },
+	impact_yeet = { x = 281, y = 310 },
 }
 
 hashimon.PLAYER_MODELS = {
@@ -218,5 +226,5 @@ else
 		end)
 	end)
 
-	core.log("action", "[hashimon_players] Bob registered (stand 0–31, walk 41–70, sit 71–80)")
+	core.log("action", "[hashimon_players] Bob registered (stand/walk/sit + mobility run/fly/float/takeoff/land/impact_yeet through 310)")
 end

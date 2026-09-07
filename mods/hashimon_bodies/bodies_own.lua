@@ -200,6 +200,43 @@ hashimon_bodies.register_creatura_body({
 })
 
 -- ---------------------------------------------------------------------------
+-- EQUINE — adulto tierra (capa V2). Sustituye `road_adult` solo si el
+-- elemento es tierra. Resto de elementos siguen con el universal.
+--
+-- GLB: road_adult_earth.blend → export 1–590 → glb_for_luanti.py --yaw 180
+-- --rename Bone.003=Head,Bone.001=Neck,Bone.020=Torso,Bone.035=Tail,
+-- Bone.014=Arm.L,Bone.012=Arm.R,Bone.021=Leg.L,Bone.026=Leg.R.
+-- Clips: idle 1–30, walk 41–70, run 81–110, dig 561–590.
+-- ---------------------------------------------------------------------------
+hashimon_bodies.register_creatura_body({
+	id = "road_adult_earth",
+	family = "equine",
+	element = "tierra",
+	replaces = "road_adult",
+	mesh = "hashimon_road_adult_earth.glb",
+	textures = { "hashimon_road_adult_earth.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30, dig = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	hitbox = { width = 0.75, height = 1.60 },
+	mesh_height = 10.40,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 12, z = 2 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.45,
+		suggest_camera = "third",
+	},
+})
+
+-- ---------------------------------------------------------------------------
 -- ARTHROPOD — mantis cría. Etapa A de Bloom.
 --
 -- Primer cuerpo hexápodo del catálogo: trae `Limb.M.L/R`, el par medio del
@@ -438,6 +475,8 @@ hashimon_bodies.register_creatura_body({
 	family = "canine",
 	mesh = "hashimon_hearth_baby.glb",
 	textures = { "hashimon_hearth_baby.png" },
+	-- Phase-1 DNA tint mask (white/alpha = tintable). Without this field, no DNA paint.
+	tintmask = "hashimon_hearth_baby_tintmask.png",
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),

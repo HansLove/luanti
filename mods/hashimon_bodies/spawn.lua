@@ -178,11 +178,13 @@ core.register_chatcommand("hbody", {
 
 		local m = hashimon.compile_morphology(creature)
 		local p = m.proportions and m.proportions.traits or {}
+		local tint = (m.texture_mod and m.texture_mod ~= "") and "tintmask ON" or "tintmask OFF"
 		return true, string.format(
 			"%s  ·  %s  ·  stage %d  ·  ADN %s…\n" ..
-			"tamaño %.2f  ·  textura %d  ·  cabeza %.2f cuello %.2f torso %.2f extrem %.2f",
+			"tamaño %.2f  ·  textura %d  ·  %s\n" ..
+			"cabeza %.2f cuello %.2f torso %.2f extrem %.2f",
 			body_id, species_key, stage, dna:sub(1, 8),
-			m.visual_size and m.visual_size.x or 0, m.texture_index or 1,
+			m.visual_size and m.visual_size.x or 0, m.texture_index or 1, tint,
 			p.headScale or 1, p.neckLength or 1, p.torsoWidth or 1, p.limbLength or 1)
 	end,
 })
