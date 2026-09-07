@@ -2,7 +2,7 @@
 name: droplet_scale
 
 # Temporarily raises the droplet's CPU/RAM for a high-demand window, then puts it
-# back on its own. `up` is dispatched by hand with a return date; that date is
+# back on its own. `up` is dispatched by hand with a burst length in hours; the deadline is
 # stored as a tag on the droplet itself, and the hourly schedule below is what
 # actually scales back down once it expires.
 #
@@ -20,10 +20,12 @@ on:
         options:
           - up
           - down
-      until:
-        description: "Only for `up`. Return date as YYYY-MM-DDTHH:MM, in America/Mexico_City."
+      hours:
+        description: "Only for `up`. Hours until it scales back down."
         required: false
-        type: string
+        default: "12"
+        type: choice
+        options: ["6", "12", "24", "48", "72", "168"]
       dry_run:
         description: "Print the plan and exit without touching anything."
         required: false
@@ -41,8 +43,7 @@ env:
   DEFAULT_SIZE: s-2vcpu-2gb
   BURST_SIZE: s-4vcpu-8gb
   TAG_PREFIX: scale-down-at-
-  # A typo in the year must not cost months of a $48/mo droplet.
-  MAX_BURST_DAYS: "7"
+  # Display only; the deadline itself is a unix timestamp.
   SCALE_TZ: America/Mexico_City
 
 permissions:
@@ -72,7 +73,7 @@ jobs:
           # Empty on a schedule trigger. Passed through env rather than
           # interpolated into the script, so a crafted input cannot inject shell.
           ACTION: ${{ inputs.action }}
-          UNTIL: ${{ inputs.until }}
+          HOURS: ${{ inputs.hours }}
         run: |
           set -euo pipefail
 
@@ -108,23 +109,9 @@ jobs:
           tag_to_set=""
           if [ "$action" = "up" ]; then
             target="$BURST_SIZE"
-            if [ -z "$UNTIL" ]; then
-              echo '::error::`until` is required when action is `up`.'
-              exit 1
-            fi
-            if ! deadline=$(TZ="$SCALE_TZ" date -d "$UNTIL" +%s 2>/dev/null); then
-              echo "::error::Could not parse '$UNTIL'. Expected YYYY-MM-DDTHH:MM."
-              exit 1
-            fi
-            if [ "$deadline" -le "$now" ]; then
-              echo "::error::Return date '$UNTIL' is in the past."
-              exit 1
-            fi
-            max_deadline=$(( now + MAX_BURST_DAYS * 86400 ))
-            if [ "$deadline" -gt "$max_deadline" ]; then
-              echo "::error::Return date is more than $MAX_BURST_DAYS days out."
-              exit 1
-            fi
+            # `hours` is a choice input, so it is always one of the listed
+            # numbers; the largest option (168h) is the burst cap.
+            deadline=$(( now + HOURS * 3600 ))
             tag_to_set="${TAG_PREFIX}${deadline}"
           else
             target="$DEFAULT_SIZE"
@@ -155,34 +142,6 @@ jobs:
             echo "tag_to_clear=$existing_tag"
             echo "deadline=${deadline:-}"
           } >> "$GITHUB_OUTPUT"
-
-      - name: Dry run summary
-        if: steps.intent.outputs.proceed == 'true' && inputs.dry_run
-        env:
-          ACTION: ${{ steps.intent.outputs.action }}
-          CURRENT: ${{ steps.intent.outputs.current }}
-          TARGET: ${{ steps.intent.outputs.target }}
-          RESIZE_NEEDED: ${{ steps.intent.outputs.resize_needed }}
-          TAG_TO_SET: ${{ steps.intent.outputs.tag_to_set }}
-          TAG_TO_CLEAR: ${{ steps.intent.outputs.tag_to_clear }}
-          DEADLINE: ${{ steps.intent.outputs.deadline }}
-        run: |
-          set -euo pipefail
-          {
-            echo "## Dry run — nothing was changed"
-            echo ""
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Action | \`$ACTION\` |"
-            echo "| Current size | \`$CURRENT\` |"
-            echo "| Target size | \`$TARGET\` |"
-            echo "| Resize needed | $RESIZE_NEEDED |"
-            echo "| Tag to set | \`${TAG_TO_SET:-<none>}\` |"
-            echo "| Tag to clear | \`${TAG_TO_CLEAR:-<none>}\` |"
-            # Trailing `|| true`: a bare test as the block's last command would
-            # return 1 and fail the step under `set -e` whenever DEADLINE is empty.
-            [ -n "$DEADLINE" ] && echo "| Returns at | $(TZ="$SCALE_TZ" date -d "@$DEADLINE") |" || true
-          } >> "$GITHUB_STEP_SUMMARY"
 
       # Tagging happens BEFORE the resize on purpose. If the resize then fails,
       # the hourly job finds a tag on a droplet already at the default size and
@@ -251,8 +210,9 @@ jobs:
           doctl compute tag delete "$TAG_TO_CLEAR" --force || true
 
       - name: Summary
-        if: steps.intent.outputs.proceed == 'true' && !inputs.dry_run
+        if: steps.intent.outputs.proceed == 'true'
         env:
+          DRY_RUN: ${{ inputs.dry_run }}
           ACTION: ${{ steps.intent.outputs.action }}
           CURRENT: ${{ steps.intent.outputs.current }}
           TARGET: ${{ steps.intent.outputs.target }}
@@ -261,10 +221,12 @@ jobs:
         run: |
           set -euo pipefail
           {
-            if [ "$RESIZE_NEEDED" = "true" ]; then
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "## Dry run: would scale \`$ACTION\` from \`$CURRENT\` to \`$TARGET\` (resize needed: $RESIZE_NEEDED)"
+            elif [ "$RESIZE_NEEDED" = "true" ]; then
               echo "## Scaled \`$ACTION\`: \`$CURRENT\` to \`$TARGET\`"
             else
-              echo "## Already at \`$TARGET\` — no resize performed"
+              echo "## Already at \`$TARGET\`, no resize performed"
             fi
             echo ""
             if [ "$ACTION" = "up" ] && [ -n "$DEADLINE" ]; then
