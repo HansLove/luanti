@@ -49,6 +49,9 @@ if [ "$USE_XCODE" == "yes" ]; then
 	cmake_args+=(-GXcode)
 fi
 
+# extra cmake args passed by the caller
+cmake_args+=("$@")
+
 cmake .. "${cmake_args[@]}"
 
 if [ "$USE_XCODE" == "yes" ]; then

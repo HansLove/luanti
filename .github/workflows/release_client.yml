@@ -1,0 +1,141 @@
+name: release_client
+
+# Publishes the Hashimon client for Windows and macOS.
+# Push a tag "client-v<x.y.z>" to build and release.
+# workflow_dispatch builds the artifacts only, without creating a release.
+on:
+  push:
+    tags:
+      - 'client-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Client version, without the client-v prefix'
+        required: true
+        default: '0.0.0'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows launcher
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install compiler
+        run: |
+          source ./util/ci/common.sh
+          install_mingw_deps 64 true
+          sudo ./util/buildbot/download_toolchain.sh /usr
+
+      - name: Build
+        run: |
+          VER="${{ inputs.version }}"
+          [ -n "$VER" ] || VER="${GITHUB_REF_NAME#client-v}"
+          EXISTING_MINETEST_DIR=$PWD \
+          ./util/buildbot/buildwin64.sh B \
+            -DRUN_IN_PLACE=0 \
+            -DDEVELOPMENT_BUILD=FALSE \
+            -DENABLE_UPDATE_CHECKER=FALSE \
+            -DVERSION_EXTRA="hashimon-$VER"
+
+      - name: Package self-extracting launcher
+        run: |
+          dest=$(mktemp -d)
+          unzip -q -d "$dest" B/build/*-nsis.zip
+          cd "$dest"/luanti-*-nsis
+          # the extracted payload is what the launcher will ship, test it first
+          wine bin/luanti.exe --version
+          makensis -WX -V3 sfx-launcher.nsi
+          mkdir -p "$GITHUB_WORKSPACE/artifact"
+          cp -v "$dest"/*.exe "$GITHUB_WORKSPACE/artifact/hashimon-client-win64.exe"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: hashimon-client-win64
+          path: artifact/hashimon-client-win64.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS app (${{ matrix.arch }})
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x86_64]
+    env:
+      osver: '11.3'
+      xcodever: '16.2'
+      build_type: Release
+      arch: ${{ matrix.arch }}
+      USE_XCODE: 'no'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install deps
+        run: |
+          mkdir downloads
+          source ./util/ci/common.sh
+          source ./util/ci/macos_sdk.sh
+          install_macos_precompiled_deps "$osver" "$arch"
+          install_macos_sdk "$osver" "$xcodever" downloads
+
+      - name: Build
+        run: |
+          VER="${{ inputs.version }}"
+          [ -n "$VER" ] || VER="${GITHUB_REF_NAME#client-v}"
+          mkdir build
+          cd build
+          export DEPS_DIR="/Users/Shared/macos${osver}_${arch}_deps"
+          ../util/ci/build_macos.sh \
+            -DDEVELOPMENT_BUILD=FALSE \
+            -DENABLE_UPDATE_CHECKER=FALSE \
+            -DVERSION_EXTRA="hashimon-$VER"
+
+      - name: Runtime test
+        run: ./build/macos/luanti.app/Contents/MacOS/luanti --version
+
+      # Zipping the built .app preserves permissions on the contained files,
+      #   which the GitHub artifact pipeline would otherwise strip away.
+      - name: CPack
+        run: |
+          cd build
+          rm -rf macos
+          cpack -G ZIP -B macos
+          mkdir -p "$GITHUB_WORKSPACE/artifact"
+          cp -v macos/*.zip "$GITHUB_WORKSPACE/artifact/hashimon-client-macos-${arch}.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: hashimon-client-macos-${{ matrix.arch }}
+          path: artifact/hashimon-client-macos-${{ matrix.arch }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [windows, macos]
+    if: startsWith(github.ref, 'refs/tags/client-v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: assets
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -t files < <(find assets -type f)
+          [ "${#files[@]}" -gt 0 ] || { echo "no release assets found"; exit 1; }
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Hashimon client $GITHUB_REF_NAME" \
+            --latest \
+            --generate-notes \
+            "${files[@]}"
