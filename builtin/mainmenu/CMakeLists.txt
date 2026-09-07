@@ -10,6 +10,7 @@ set(BUILTIN_MAINMENU_SRCS
 	mainmenu/dlg_create_world.lua
 	mainmenu/dlg_delete_content.lua
 	mainmenu/dlg_delete_world.lua
+	mainmenu/dlg_hashimon_login.lua
 	mainmenu/dlg_rebind_keys.lua
 	mainmenu/dlg_register.lua
 	mainmenu/dlg_reinstall_mtg.lua
