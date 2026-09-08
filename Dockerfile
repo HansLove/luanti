@@ -12,11 +12,12 @@ RUN apk add --no-cache git build-base cmake curl-dev zlib-dev zstd-dev \
 
 WORKDIR /usr/src/
 
-ADD https://github.com/jupp0r/prometheus-cpp.git?branch=master /usr/src/prometheus-cpp
+ADD --keep-git-dir https://github.com/jupp0r/prometheus-cpp.git?tag=v1.3.0 /usr/src/prometheus-cpp
 ADD https://github.com/libspatialindex/libspatialindex.git?branch=main /usr/src/libspatialindex
 ADD --keep-git-dir https://luajit.org/git/luajit.git?branch=${LUAJIT_VERSION} /usr/src/luajit
 
 RUN cd prometheus-cpp && \
+		git submodule update --init --recursive && \
 		cmake -B build \
 			-DCMAKE_INSTALL_PREFIX=/usr/local \
 			-DCMAKE_BUILD_TYPE=Release \

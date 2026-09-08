@@ -1,4 +1,6 @@
 ./cmake-build-*
 ./build/*
 ./cache/*
+src/cmake_config.h
+src/cmake_config_githash.h
 Dockerfile
