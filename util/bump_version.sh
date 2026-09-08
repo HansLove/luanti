@@ -21,7 +21,7 @@ read_versions() {
 	VERSION_MAJOR=$(grep -oE '^set\(VERSION_MAJOR [0-9]+\)$' CMakeLists.txt | tr -dC 0-9)
 	VERSION_MINOR=$(grep -oE '^set\(VERSION_MINOR [0-9]+\)$' CMakeLists.txt | tr -dC 0-9)
 	VERSION_PATCH=$(grep -oE '^set\(VERSION_PATCH [0-9]+\)$' CMakeLists.txt | tr -dC 0-9)
-	VERSION_IS_DEV=$(grep -oE '^set\(DEVELOPMENT_BUILD [A-Z]+\)$' CMakeLists.txt)
+	VERSION_IS_DEV=$(grep -oE '^set\(DEVELOPMENT_BUILD [A-Z]+' CMakeLists.txt)
 
 	# Make sure they all exist
 	[ -n "$VERSION_MAJOR" ]
@@ -90,9 +90,9 @@ set_dev_build() {
 
 	# Update CMakeList.txt versions
 	if [ "$is_dev" -eq 1 ]; then
-		sed -i -re 's/^set\(DEVELOPMENT_BUILD [A-Z]+\)$/set(DEVELOPMENT_BUILD TRUE)/' CMakeLists.txt
+		sed -i -re 's/^(set\(DEVELOPMENT_BUILD )[A-Z]+/\1TRUE/' CMakeLists.txt
 	else
-		sed -i -re 's/^set\(DEVELOPMENT_BUILD [A-Z]+\)$/set(DEVELOPMENT_BUILD FALSE)/' CMakeLists.txt
+		sed -i -re 's/^(set\(DEVELOPMENT_BUILD )[A-Z]+/\1FALSE/' CMakeLists.txt
 	fi
 
 	git add -f CMakeLists.txt android/build.gradle
