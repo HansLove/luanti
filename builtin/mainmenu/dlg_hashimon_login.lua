@@ -5,7 +5,6 @@
 
 local DEFAULT_ADDRESS = "voxel.hashima.xyz"
 local DEFAULT_PORT = 30000
-local REGISTER_URL = "https://hashimon.app/register"
 
 local function get_address()
 	local address = core.settings:get("address")
@@ -34,7 +33,7 @@ local function login_formspec(dialogdata)
 		"button[4.125,4.55;3.5,0.8;btn_register;Register]",
 		"button[0.375,5.55;3.5,0.8;btn_settings;Settings]",
 		"button[4.125,5.55;3.5,0.8;btn_exit;Exit]",
-		"label[0.375,6.85;Owner accounts are created at ", REGISTER_URL, "]",
+		"label[0.375,6.85;Use the same credentials you registered at ihashima.com]",
 	}, "")
 end
 
