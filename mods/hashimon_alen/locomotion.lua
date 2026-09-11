@@ -9,13 +9,23 @@
 
 hashimon_alen = hashimon_alen or {}
 
+-- Velocidades. Las de la primera versión (vuelo 7, persecución 5.5) eran las de
+-- un animal grande y tranquilo, y en partida real se leyeron como lo que eran:
+-- "flota lento, soso, no da miedo". Un jugador corre a ~4 y con sprint pasa de 6;
+-- un villano que cruza el mapa a 7 no persigue a nadie, lo acompaña. Ahora nada
+-- de lo que hace en el aire es más lento que correr.
 hashimon_alen.SPEEDS = {
-	WALK = 3.0,
-	GROUND_PURSUIT = 5.5,
-	FLY = 7.0,
-	FLY_FAST = 16.0,
-	CIRCLE = 5.0,
+	WALK = 4.2,
+	GROUND_PURSUIT = 9.0,
+	FLY = 12.0,
+	FLY_FAST = 26.0,
+	CIRCLE = 9.0,
 }
+
+-- El picado va aparte de SPEEDS a propósito: SPEEDS son modos de locomoción y
+-- cada uno debe tener su compromiso mínimo en MODE_COMMIT. Esto no es un modo,
+-- es un ataque que dura lo que dura la caída.
+hashimon_alen.DIVE_SPEED = 34.0
 
 -- Compromiso mínimo por modo, en segundos. Sin esto Alen oscila entre andar y
 -- volar cada pocos segundos y parece un bicho indeciso en vez de uno enorme.
@@ -39,6 +49,18 @@ hashimon_alen.AIR_PATIENCE = 25
 -- en el aire que perder calidad y hacerlo atorarse bajo tierra".
 hashimon_alen.NO_GROUND_AFTER_BLAST = 10
 hashimon_alen.BURIED_RESCUE_AFTER = 1.0
+
+-- ATASCO GENERAL, no sólo enterrado. Quedarse pegado a una pared era el caso que
+-- más se veía jugando y el que no estaba cubierto: no está enterrado ni sumergido,
+-- así que el rescate no se disparaba nunca y se quedaba empujando contra la piedra
+-- indefinidamente. Se mide lo único que no miente: cuánto se ha MOVIDO de verdad
+-- mientras quería moverse.
+hashimon_alen.STUCK_SPEED = 1.2      -- moverse menos que esto es no moverse
+hashimon_alen.STUCK_CONFIRM = 0.9    -- segundos así antes de considerarlo atasco
+hashimon_alen.STUCK_SIDESTEP = 1.6   -- hasta aquí, intenta rodear
+hashimon_alen.STUCK_CLIMB = 3.0      -- hasta aquí, intenta subir por encima
+hashimon_alen.STUCK_CLEAR = 4.5      -- pasado esto, DESPEJA lo que tenga delante
+hashimon_alen.CLEAR_COOLDOWN = 3.0
 
 local GROUND_EPS = 1.6      -- a esta altura del suelo se considera en tierra
 local STUCK_DIST = 0.5      -- movimiento real mínimo en STUCK_WINDOW
@@ -502,39 +524,249 @@ end
 
 --- Rescate. Un dragón clavado dentro del terreno no es un bug de física que se
 --- pueda esperar a que se resuelva solo: hay que sacarlo. Feo pero terminante.
+--- Quita de en medio hasta `budget` nodos alrededor del morro. Es la respuesta
+--- literal a "debería tener algún mecanismo que le permita despejar si se atora":
+--- un dragón que se cree un dios no se queda empujando una pared, la deshace.
+---
+--- Respeta `core.is_protected` sin excepción, igual que el cubo de fuego. Si la
+--- pared es de un pueblo en paz, no la toca — y entonces el atasco se resuelve
+--- subiendo, que es la salida que sí está siempre disponible.
+function hashimon_alen.clear_ahead(self, budget)
+	local pos = self.object:get_pos()
+	if not pos then return 0 end
+	local yaw = self.object:get_yaw() or 0
+	local fx, fz = -math.sin(yaw), math.cos(yaw)
+
+	local removed, blocked = 0, false
+	budget = budget or 6
+	for step = 1, 3 do
+		for _, dy in ipairs({ 0, 1, 2 }) do
+			if removed >= budget then break end
+			local p = {
+				x = math.floor(pos.x + fx * step + 0.5),
+				y = math.floor(pos.y + dy + 0.5),
+				z = math.floor(pos.z + fz * step + 0.5),
+			}
+			local node = core.get_node_or_nil(p)
+			local def = node and core.registered_nodes[node.name]
+			if def and def.walkable and def.diggable ~= false then
+				if core.is_protected(p, "alen_gregory") then
+					blocked = true
+				else
+					core.remove_node(p)
+					core.add_particlespawner({
+						amount = 12, time = 0.1,
+						minpos = vector.subtract(p, 0.5), maxpos = vector.add(p, 0.5),
+						minvel = { x = -2, y = 0, z = -2 }, maxvel = { x = 2, y = 3, z = 2 },
+						minexptime = 0.3, maxexptime = 0.8, minsize = 1, maxsize = 3,
+						texture = "tnt_smoke.png", glow = 6,
+					})
+					removed = removed + 1
+				end
+			end
+		end
+	end
+	if removed > 0 then
+		core.sound_play("default_dig_cracky",
+			{ pos = pos, gain = 0.9, max_hear_distance = 40 }, true)
+	end
+	return removed, blocked
+end
+
+--- Vigila el atasco y lo resuelve por escalones. Devuelve true si ha tomado el
+--- control del tick — el que llama debe rendirse y dejarle trabajar.
+---
+--- Los escalones existen porque la solución bonita y la solución fea no son la
+--- misma: rodear se ve natural, despejar a mordiscos no. Se prueba lo barato
+--- primero y sólo se rompe piedra cuando lleva segundos humillado contra ella.
 function hashimon_alen.step_unstick(self, dtime)
 	local pos = self.object:get_pos()
 	if not pos then return false end
 
-	local trapped = hashimon_alen.is_buried(pos) or hashimon_alen.node_is_liquid(pos)
-	if not trapped then
-		self._buried_for = 0
+	local buried = hashimon_alen.is_buried(pos) or hashimon_alen.node_is_liquid(pos)
+
+	-- Desplazamiento REAL desde el tick anterior. La velocidad que él mismo se
+	-- pone no sirve para esto: contra una pared se la pone entera y no avanza.
+	local moved = self._last_pos and hashimon_alen.dist(pos, self._last_pos) or 0
+	self._last_pos = pos
+	local wanted = self._want_move and dtime > 0
+	local crawling = wanted and (moved / math.max(dtime, 0.001)) < hashimon_alen.STUCK_SPEED
+
+	if not buried and not crawling then
+		self._buried_for, self._stuck_for = 0, 0
 		return false
 	end
 
-	self._buried_for = (self._buried_for or 0) + dtime
-	-- Primero se intenta salir volando por las buenas.
+	-- Enterrado es su propio caso y va directo al rescate: ahí no hay nada que
+	-- rodear.
+	if buried then
+		self._buried_for = (self._buried_for or 0) + dtime
+		self.object:set_acceleration({ x = 0, y = 0, z = 0 })
+		self._airborne, self._landing = true, false
+		self.object:set_velocity({ x = 0, y = 6, z = 0 })
+		self._loco_mode, self._loco_since = "FLY", core.get_gametime()
+		self._airborne_since = self._airborne_since or core.get_gametime()
+		if self._buried_for >= hashimon_alen.BURIED_RESCUE_AFTER then
+			local air = hashimon_alen.first_air_above(pos, 40)
+			if air then
+				self.object:set_pos({ x = air.x, y = air.y + 2, z = air.z })
+				self.object:set_velocity({ x = 0, y = 2, z = 0 })
+				core.log("action", string.format(
+					"[alen] rescatado de estar enterrado en (%.0f,%.0f,%.0f)", pos.x, pos.y, pos.z))
+			end
+			self._buried_for = 0
+		end
+		return true
+	end
+
+	self._stuck_for = (self._stuck_for or 0) + dtime
+	if self._stuck_for < hashimon_alen.STUCK_CONFIRM then return false end
+
+	local t = self._stuck_for
+	local yaw = self.object:get_yaw() or 0
+	local fx, fz = -math.sin(yaw), math.cos(yaw)
+
+	if t < hashimon_alen.STUCK_SIDESTEP then
+		-- Rodear: perpendicular, hacia el lado que elija esta vez. Se fija el lado
+		-- para no bailar de izquierda a derecha en ticks consecutivos.
+		self._stuck_side = self._stuck_side or (math.random() < 0.5 and 1 or -1)
+		local sx, sz = -fz * self._stuck_side, fx * self._stuck_side
+		local v = self.object:get_velocity() or { x = 0, y = 0, z = 0 }
+		self.object:set_velocity({ x = sx * 7, y = v.y, z = sz * 7 })
+		return true
+	end
+
+	if t < hashimon_alen.STUCK_CLEAR then
+		-- Subir por encima. Casi todo lo que atasca a algo de su tamaño se resuelve
+		-- ganando tres nodos de altura.
+		self.object:set_acceleration({ x = 0, y = 0, z = 0 })
+		self._airborne, self._landing = true, false
+		self.object:set_velocity({ x = fx * 2, y = 9, z = fz * 2 })
+		self._loco_mode, self._loco_since = "FLY", core.get_gametime()
+		return true
+	end
+
+	-- Y si sigue ahí, deja de ser elegante.
+	local now = core.get_gametime()
+	if not self._clear_cd or now >= self._clear_cd then
+		self._clear_cd = now + hashimon_alen.CLEAR_COOLDOWN
+		local removed, blocked = hashimon_alen.clear_ahead(self, 8)
+		if removed > 0 then
+			hashimon_alen.say("ON_STUCK_CLEAR")
+			core.log("action", string.format("[alen] despejó %d nodos para salir del atasco", removed))
+			self._stuck_for, self._stuck_side = 0, nil
+			return true
+		end
+		if blocked then
+			-- Pared protegida: no se toca. Se sale por arriba y se anota, porque
+			-- eso es exactamente lo que dispara el asedio.
+			self._blocked_by_protection = now
+		end
+	end
+
 	self.object:set_acceleration({ x = 0, y = 0, z = 0 })
 	self._airborne, self._landing = true, false
-	self.object:set_velocity({ x = 0, y = 6, z = 0 })
+	self.object:set_velocity({ x = -fx * 4, y = 10, z = -fz * 4 })
 	self._loco_mode, self._loco_since = "FLY", core.get_gametime()
-	self._airborne_since = self._airborne_since or core.get_gametime()
-
-	if self._buried_for >= hashimon_alen.BURIED_RESCUE_AFTER then
+	if self._stuck_for > 8 then
 		local air = hashimon_alen.first_air_above(pos, 40)
-		if air then
-			self.object:set_pos({ x = air.x, y = air.y + 2, z = air.z })
-			self.object:set_velocity({ x = 0, y = 2, z = 0 })
-			core.log("action", string.format(
-				"[alen] rescatado de estar atascado en (%.0f,%.0f,%.0f)", pos.x, pos.y, pos.z))
-		end
-		self._buried_for = 0
+		if air then self.object:set_pos({ x = air.x, y = air.y + 3, z = air.z }) end
+		self._stuck_for, self._stuck_side = 0, nil
 	end
 	return true
 end
 
+--- CAER COMO UN METEORITO. Lo pidió la partida con estas palabras: "cuando le
+--- pegas debería como cohete, o como meteorito, caer a la tierra". No es un modo
+--- de locomoción, es un ataque: se desengancha del vuelo, cae a plomo sobre quien
+--- lo tocó y el impacto hace daño en área.
+function hashimon_alen.begin_dive(self, target)
+	if self._dive_until or self._charging then return false end
+	local pos = self.object:get_pos()
+	local tpos = target and target:get_pos()
+	if not pos or not tpos then return false end
+	if pos.y - tpos.y < 4 then return false end          -- ya está a su altura
+	if hashimon_alen.dist(pos, tpos) > 45 then return false end
+
+	self._dive_until = core.get_gametime() + 4
+	self._dive_target = { x = tpos.x, y = tpos.y, z = tpos.z }
+	self._airborne, self._landing = true, false
+	self.object:set_acceleration({ x = 0, y = 0, z = 0 })
+	hashimon_alen.play_oneshot(self, "dive")
+	core.sound_play("fire_large", { pos = pos, gain = 1.0, max_hear_distance = 90 }, true)
+	return true
+end
+
+--- Avanza el picado. Devuelve true mientras dure: como la carga del cubo, manda
+--- sobre la táctica.
+function hashimon_alen.step_dive(self, dtime)
+	if not self._dive_until then return false end
+	local pos = self.object:get_pos()
+	local now = core.get_gametime()
+	if not pos or now >= self._dive_until then
+		self._dive_until, self._dive_target = nil, nil
+		return false
+	end
+
+	local goal = self._dive_target
+	local dx, dz = goal.x - pos.x, goal.z - pos.z
+	local horiz = math.sqrt(dx * dx + dz * dz)
+	local nx, nz = (horiz > 0.1) and dx / horiz or 0, (horiz > 0.1) and dz / horiz or 0
+	local speed = hashimon_alen.DIVE_SPEED
+	self.object:set_velocity({ x = nx * speed * 0.45, y = -speed, z = nz * speed * 0.45 })
+	hashimon_alen.turn_toward(self, -math.atan2(dx, dz), dtime)
+
+	-- Llegó al suelo (o a la altura del objetivo): impacto.
+	local floor = hashimon_alen.floor_below(pos, 3)
+	if (floor and floor <= 2.2) or pos.y <= goal.y + 1.0 then
+		self._dive_until, self._dive_target = nil, nil
+		hashimon_alen.dive_impact(self, pos)
+		return true
+	end
+	return true
+end
+
+--- El golpe contra el suelo. Empuja y hace daño a lo que tenga cerca; no rompe
+--- nodos, que para eso está el cubo.
+function hashimon_alen.dive_impact(self, pos)
+	self.object:set_velocity({ x = 0, y = 0, z = 0 })
+	self.object:set_acceleration({ x = 0, y = -9.8, z = 0 })
+	self._airborne, self._landing = false, true
+	self._loco_mode, self._loco_since = "GROUND_IDLE", core.get_gametime()
+	hashimon_alen.play_oneshot(self, "land")
+
+	core.sound_play("tnt_explode",
+		{ pos = pos, gain = 1.0, max_hear_distance = 120 }, true)
+	core.add_particlespawner({
+		amount = 90, time = 0.3,
+		minpos = vector.subtract(pos, 3), maxpos = vector.add(pos, 3),
+		minvel = { x = -6, y = 1, z = -6 }, maxvel = { x = 6, y = 7, z = 6 },
+		minexptime = 0.5, maxexptime = 1.4, minsize = 2, maxsize = 6,
+		texture = "tnt_smoke.png", glow = 8,
+	})
+
+	for _, o in ipairs(core.get_objects_inside_radius(pos, 6)) do
+		if o:is_player() then
+			local pp = o:get_pos()
+			local d = hashimon_alen.dist(pos, pp)
+			o:set_hp(math.max(0, o:get_hp() - math.floor(14 * (1 - d / 6))))
+			local away = vector.normalize(vector.subtract(
+				{ x = pp.x, y = pp.y + 1, z = pp.z }, pos))
+			o:add_velocity(vector.multiply(away, 12))
+		end
+	end
+	hashimon_alen.note_event("meteorito", self._killer,
+		{ x = math.floor(pos.x), y = math.floor(pos.y), z = math.floor(pos.z) })
+end
+
+
 function hashimon_alen.move_to(self, dest, dtime, opts)
 	opts = opts or {}
+	-- Marca de intención, que es lo que el detector de atascos necesita para
+	-- distinguir "no se mueve porque está quieto a propósito" de "no se mueve
+	-- porque hay una pared". Sin esto, plantarse a mirar a alguien contaría como
+	-- atasco y lo mandaría a picar piedra.
+	self._want_move = (dest ~= nil) and not opts.standing
 	-- Las transiciones las avanza think(); aquí sólo hay que no estorbarlas.
 	if self._loco_mode == "TAKEOFF" or self._loco_mode == "LAND" then return end
 

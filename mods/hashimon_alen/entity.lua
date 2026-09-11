@@ -241,10 +241,21 @@ core.register_entity(hashimon_alen.ENTITY, {
 
 		local fight = hashimon_alen.register_hit(self, who, dmg)
 
+		-- METEORITO. Si estaba en el aire cuando lo tocaste, no responde
+		-- descendiendo con elegancia: se deja caer encima. Va antes que la furia
+		-- porque a bocajarro el cubo ni siquiera está permitido (min_range), y
+		-- ese hueco era justo el que hacía que golpearlo desde abajo no tuviera
+		-- consecuencias visibles.
+		local dived = self._airborne and hashimon_alen.begin_dive(self, puncher)
+
 		if was_asleep then
 			hashimon_alen.wake_up("golpeado")
 			hashimon_alen.say("ON_SLEEP_INTERRUPTED", { force = true }, { name = who })
 			hashimon_alen.note_event("despertado_a_golpes", who, { dano = math.floor(dmg) })
+
+		elseif dived then
+			hashimon_alen.say("ON_DIVE", { force = true }, { name = who })
+			hashimon_alen.note_event("picado", who, { dano = math.floor(dmg) })
 
 		elseif hashimon_alen.should_rage(self) then
 			-- El acontecimiento. Se cruzó el umbral de daño en este combate y lo

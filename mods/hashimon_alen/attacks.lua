@@ -254,11 +254,27 @@ function hashimon_alen.begin_firecube(self, target)
 	if self._charging then return false, "already_charging" end
 	if not target or not target:get_pos() then return false, "no_target" end
 
+	return hashimon_alen.begin_firecube_at(self, target:get_pos(), target, true)
+end
+
+--- El cubo contra un PUNTO, no contra un cuerpo. Es lo que hace posible el
+--- asedio: cuando alguien se mete bajo techo, el objetivo pasa a ser el techo.
+--- `who` sólo sirve para la frase y para saber a quién sigue el proyectil.
+--- `track` = seguir al cuerpo hasta el momento del disparo. En el asedio va a
+--- false: el objetivo es la estructura, y si él se mueve dentro de la casa el
+--- cubo sigue yendo al techo.
+function hashimon_alen.begin_firecube_at(self, aim, who, track)
+	local why = hashimon_alen.attack_blocked(self, "firecube")
+	if why then return false, why end
+	if self._charging then return false, "already_charging" end
+	if not aim then return false, "no_target" end
+
 	local mypos = self.object:get_pos()
 	local a0 = hashimon_alen.ATTACKS.firecube
-	if mypos and hashimon_alen.dist(mypos, target:get_pos()) < a0.min_range then
+	if mypos and hashimon_alen.dist(mypos, aim) < a0.min_range then
 		return false, "too_close" -- a bocajarro se usa el aliento, no el cubo
 	end
+	local target = who
 
 	local a = hashimon_alen.ATTACKS.firecube
 	mark_used(self, "firecube")
@@ -266,12 +282,14 @@ function hashimon_alen.begin_firecube(self, target)
 	-- La advertencia. Si ya estalló la furia lo dice ON_RAGE desde on_punch; si no,
 	-- lo anuncia aquí. Un cubo sin sentencia previa sería un ataque a traición, y
 	-- Alen no ataca a traición.
-	local who = target.get_player_name and target:get_player_name() or nil
+	local wname = who and who.get_player_name and who:get_player_name() or nil
 	if not (self._fight and self._fight.raged) then
-		hashimon_alen.declare(self, "ON_WARN_ATTACK", { name = who })
+		hashimon_alen.declare(self, "ON_WARN_ATTACK", { name = wname })
 	end
 	self._charging = core.get_gametime() + a.charge
-	self._charge_target = target
+	self._charge_target = track and target or nil
+	self._charge_who = who
+	self._charge_aim = { x = aim.x, y = aim.y, z = aim.z }
 
 	hashimon_alen.play_oneshot(self, a.anim)
 	local pos = self.object:get_pos()
@@ -296,14 +314,18 @@ function hashimon_alen.step_attacks(self, _dtime)
 
 	local a = hashimon_alen.ATTACKS.firecube
 	local target = self._charge_target
-	self._charging, self._charge_target = nil, nil
+	local aim = self._charge_aim
+	self._charging, self._charge_target, self._charge_aim = nil, nil, nil
+	self._charge_who = nil
 
 	local floor_e = rage_allows(self) and a.energy_cost or a.min_energy
 	if (hashimon_alen.get_state().energy or 0) < floor_e then return end
 	hashimon_alen.spend_energy(a.energy_cost)
 
 	local pos = self.object:get_pos()
-	local tpos = target and target:get_pos()
+	-- Se apunta a donde esté AHORA si sigue siendo un cuerpo; si el objetivo era
+	-- una estructura, al punto que se fijó al empezar la carga.
+	local tpos = (target and target:get_pos()) or aim
 	if not pos or not tpos then return end
 
 	local dir = vector.normalize(vector.subtract(

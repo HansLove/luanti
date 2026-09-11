@@ -81,7 +81,9 @@ hashimon.SPIRITS = {
 	  line = { "feline" }, kin = nil },
 	{ key = "guardian", name = "Guardian", name_es = "Guardián",
 	  archetype = "protección, fuerza, responsabilidad",
-	  line = { "ursine", "megafauna" }, kin = nil },
+	  -- Solo úrsido propio: guardian_baby → guardian_adult. Megafauna a Natural
+	  -- (elefante/mamut intercalaban y el panda de dmobs pintaba mobs_blood).
+	  line = { "ursine" }, kin = nil },
 	{ key = "beacon", name = "Beacon", name_es = "Faro",
 	  archetype = "visión, dirección, descubrimiento",
 	  line = { "avian", "pterosaur" }, kin = nil },

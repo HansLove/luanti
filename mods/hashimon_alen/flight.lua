@@ -10,7 +10,10 @@ hashimon_alen = hashimon_alen or {}
 local LOOKAHEAD = 9        -- nodos que mira hacia adelante
 local FLOOR_CLEARANCE = 5  -- altura mínima sobre el suelo en crucero
 local CLIMB_GAIN = 1.4     -- fuerza del vector de ascenso al detectar obstáculo
-local YAW_RATE = 2.6       -- radianes por segundo; sin esto el giro es un salto
+-- Giro. Estaba en 2.6 rad/s: poco más de 20 segundos para dar una vuelta
+-- completa, así que un jugador orbitando a pie lo dejaba atrás y parecía que no
+-- lo veía. No era que no lo viera — era que no podía encararlo.
+local YAW_RATE = 5.2       -- radianes por segundo
 
 local function vlen(v)
 	return math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
@@ -171,9 +174,44 @@ function hashimon_alen.fly_toward(self, target, speed, dtime, lift)
 	return dist
 end
 
+--- ¿Tiene línea de visión hasta ese punto? Es la diferencia entre "no te veo" y
+--- "te veo y hay una pared en medio", y de ahí sale el asedio: un dragón que
+--- SABE dónde estás y se queda flotando delante de tu puerta es el momento en
+--- que deja de dar miedo.
+function hashimon_alen.has_los(from, to)
+	if not from or not to then return false end
+	local a = { x = from.x, y = from.y + 1.5, z = from.z }
+	local b = { x = to.x, y = to.y + 1.0, z = to.z }
+	local ray = core.raycast(a, b, false, false)
+	for pointed in ray do
+		if pointed.type == "node" then
+			local node = core.get_node_or_nil(pointed.under)
+			local def = node and core.registered_nodes[node.name]
+			if def and def.walkable then
+				return false, pointed.under
+			end
+		end
+	end
+	return true
+end
+
+--- ¿Tiene techo encima? Es lo que distingue "se metió en una casa" de "hay una
+--- colina en medio", y sin esa distinción el asedio bombardearía el paisaje.
+function hashimon_alen.roof_over(pos, max)
+	for i = 1, (max or 7) do
+		local n = core.get_node_or_nil({ x = pos.x, y = pos.y + i, z = pos.z })
+		local d = n and core.registered_nodes[n.name]
+		if d and d.walkable then return true, i end
+	end
+	return false
+end
+
 --- Frena en el sitio conservando algo de deriva, para que quede flotando en vez
 --- de congelarse en seco.
 function hashimon_alen.hover_brake(self)
+	-- Frenar es lo contrario de querer avanzar. Decirlo aquí evita que quedarse
+	-- quieto a propósito (cargando el cubo, escuchando) se lea como un atasco.
+	self._want_move = false
 	local v = self.object:get_velocity() or { x = 0, y = 0, z = 0 }
 	self.object:set_velocity({ x = v.x * 0.86, y = v.y * 0.86 + 0.12, z = v.z * 0.86 })
 end

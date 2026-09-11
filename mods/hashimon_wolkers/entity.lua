@@ -12,10 +12,18 @@ local MODELS = { "wolker_pos", "wolker_neg", "wolker_small" }
 
 -- Escala visual por pieza. La cría no es un adulto encogido en el eje Y: se declara aparte
 -- para que el asset pueda tener sus propias proporciones sin tocar código.
+--
+-- altura_nodos = mesh_AABB × visual_size / 10. Los .glb salen a ~6-7 u (adulto) y ~3 u
+-- (cría); con visual_size = 1 medirían medio metro. Números = hitbox.height × 10 / AABB.
+--
+-- OJO con la cría: su AABB de malla es 3.06, pero el nodo Armature del .glb lleva una
+-- escala de 0.619 que los huesos heredan, así que en pantalla mide 1.90 u, no 3.06. El
+-- cociente se calcula contra lo que se ve (1.90), no contra lo que dice el accessor; con
+-- 3.27 Nani salía a 0.62 nodos, un 38 % por debajo de su propia caja de colisión.
 local VISUAL = {
-	wolker_pos   = { x = 1.0, y = 1.0 },
-	wolker_neg   = { x = 1.0, y = 1.0 },
-	wolker_small = { x = 1.0, y = 1.0 },
+	wolker_pos   = { x = 2.80, y = 2.80 }, -- AABB 6.26 × escala 1.000 = 6.26 u → 1.75 nodos
+	wolker_neg   = { x = 2.28, y = 2.28 }, -- AABB 7.45 × escala 1.000 = 7.45 u → 1.70 nodos
+	wolker_small = { x = 5.27, y = 5.27 }, -- AABB 3.06 × escala 0.619 = 1.90 u → 1.00 nodos
 }
 
 local COLLISION = {
@@ -24,11 +32,12 @@ local COLLISION = {
 	wolker_small = { -0.2, 0.0, -0.2, 0.2, 1.00, 0.2 },
 }
 
--- Fotogramas del contrato de animación (models/README.md). Si un asset llega sin ellos, el
--- wolker se queda quieto pero vivo — nunca peta por una animación que falta.
+-- Fotogramas del contrato (models/README.md). Primera entrega: stand + walk en los
+-- arranques del contrato (1–30 / 41–70). work/panic/sleep se declaran igual; sin pista
+-- set_animation congela y el wolker sigue vivo.
 hashimon_wolkers.ANIM = {
-	stand = { x = 0,   y = 40  },
-	walk  = { x = 41,  y = 80  },
+	stand = { x = 1,   y = 30  },
+	walk  = { x = 41,  y = 70  },
 	work  = { x = 81,  y = 120 },
 	panic = { x = 121, y = 160 },
 	sleep = { x = 161, y = 200 },
@@ -46,10 +55,15 @@ function hashimon_wolkers.set_anim(self, name)
 	self.object:set_animation(frames, name == "walk" and 24 or 15, 0, true)
 end
 
+local MARK = { guardia = "\u{2694}", granjero = "\u{1F33e}", constructor = "\u{1F528}", porteador = "\u{1F4E6}" }
+
 local function nametag(w)
 	-- El nombre visible es el id corto: cualquiera puede cruzarlo con el padrón de la web.
-	local mark = (w.sign == 1) and "+" or "-"
-	return mark .. " " .. string.sub(w.id or "?", 1, 6)
+	-- Y delante va el oficio, porque saber de un vistazo cuántos guardias tiene un pueblo
+	-- es la mitad de decidir si atacarlo.
+	local sign = (w.sign == 1) and "+" or "-"
+	local role = w.role or (w.oficio and hashimon_wolkers.role_of(w.oficio)) or "granjero"
+	return (MARK[role] or "") .. " " .. sign .. " " .. string.sub(w.id or "?", 1, 6)
 end
 
 local proto = {

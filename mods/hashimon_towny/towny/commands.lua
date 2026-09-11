@@ -706,12 +706,12 @@ function (player_name, params)
 end})
 
 core.register_chatcommand("town", {
-	params = table.concat({"[<town> || (show [<town>]) || here || spawn || list || (claim [above | below]) || (unclaim [above | below]) || perm || (new <town name>) || delete || (rank add | remove <name> ",
+	params = table.concat({"(sin args = Escritorio) || [<town> || (show [<town>]) || here || spawn || list || (claim [above | below]) || (unclaim [above | below]) || perm || (new <town name>) || delete || (rank add | remove <name> ",
 		get_registered_flags_params_str(towny.registered_resident_flags),
 		") || (set (perm <perms>) | (mayor <name>) | spawn | homeblock | (name <town name>)) || (toggle ",
 		get_registered_flags_params_str(towny.registered_town_flags),
 		") || (invite <name> | sent | (revoke <name>)) || leave || (kick <name>) || (trust (add <name>) | (remove <name> | all))]"}),
-	description = "Town commands. View other's towns, manage your town, or make your own town.",
+	description = "Escritorio del pueblo (sin args) o comandos legacy. Prefer /town para el panel.",
 	privs = {towny = true},
 	func =
 
@@ -730,18 +730,19 @@ function (player_name, params)
 	local resident = towny.residents[player_name]
 
 	if pa[1]:len() == 0 then
-		local town = resident.town
-		if not town then
-			return false, "You are not currently in a town."
+		-- Friendly Town Desk (formspec). Chat subcommands remain below.
+		if towny.desk and towny.desk.show then
+			local ok, err = pcall(towny.desk.show, player_name, "main")
+			if not ok then
+				core.log("error", "[towny] desk.show failed: " .. tostring(err))
+				return false, "Error abriendo el Escritorio: " .. tostring(err)
+			end
+			return true, "Abriendo el Escritorio del pueblo…"
 		end
-
-		local block = towny.get_townblock_by_pos(player_pos, town)
-
-		return true, create_town_info_str(town)
+		return false, "Escritorio no cargado. Reinicia Luanti (mods/towny debe ser el fork Hashimon)."
 
 	elseif pa[1] == "help" then
-		-- TODO: help
-		return true, "help" --print_help(pr2)
+		return true, "Abre el panel con /town (sin argumentos). También: /town new, /expand, /town invite, /resident invite accept|deny."
 
 	elseif pa[1] == "show" then
 		local town
@@ -978,23 +979,22 @@ function (player_name, params)
 			end
 		end
 		if pa[2] == "mayor" then
-			if has_flag(resident.flags, towny.RESIDENT_COMAYOR) then
-				return false, "You can't change the mayor as a comayor!"
+			-- Mayor transfer requires Town Desk confirmation (ex-mayor stays co-mayor).
+			if not has_flag(resident.flags, towny.RESIDENT_MAYOR) then
+				return false, "Solo el alcalde puede transferir la alcaldía."
 			end
 			if pa[3] then
-				local new_mayor = towny.residents[pa[3]]
-				if new_mayor then
-					if not resident.town.members[pa[3]] then
-						return false, pa[3] .. " is not a member of your town."
-					end
-					resident:remove_flag(towny.RESIDENT_MAYOR)
-					new_mayor:add_flag(towny.RESIDENT_MAYOR)
-					return true
-				else
-					return false, table.concat({"There is no player named '", pa[3], "'."})
+				if not resident.town.members[pa[3]] then
+					return false, pa[3] .. " is not a member of your town."
 				end
+				if towny.desk and towny.desk.show then
+					towny.desk.pending_mayor[player_name] = pa[3]
+					towny.desk.show(player_name, "confirm_mayor")
+					return true, "Confirma la transferencia en el Escritorio (escribe el nombre del pueblo)."
+				end
+				return false, "Abre /town y usa el botón Alcalde en el roster."
 			else
-				return true
+				return false, "Uso: /town set mayor <jugador> (pide confirmación en el Escritorio)."
 			end
 		end
 		if pa[2] == "spawn" then
@@ -1105,6 +1105,11 @@ function (player_name, params)
 			return false, "You don't have a town!"
 		end
 
+		-- Officers only (mayor / co-mayor) — invites are a political action.
+		if not has_any_flags(resident.flags, towny.RESIDENT_MAYOR + towny.RESIDENT_COMAYOR) then
+			return false, "Solo el alcalde o co-alcalde pueden invitar."
+		end
+
 		if pa[2] == "sent" then
 			local str = {}
 			for _, res in pairs(town.invites) do
@@ -1154,7 +1159,10 @@ function (player_name, params)
 
 			town.invites[invited_res.name] = invited_res
 			if invited_res:has_flag(towny.RESIDENT_ONLINE) then
-				core.chat_send_player(invited_res.name, "You are invited to the town of " .. town.name .. ". Type '/resident invite accept | deny " .. town.name .. "'.")
+				core.chat_send_player(invited_res.name,
+					"Te invita el pueblo " .. town.name
+					.. ". Abre /town para Aceptar/Rechazar, o: /resident invite accept "
+					.. town.name)
 			end
 			return true, table.concat({"Sent invite to ", invited_res.name, "."})
 		else
@@ -1186,6 +1194,9 @@ function (player_name, params)
 		if pa[2] then
 			local member = town.members[pa[2]]
 			if member then
+				if has_flag(member.flags, towny.RESIDENT_MAYOR) then
+					return false, "No puedes expulsar al alcalde. Transfiere la alcaldía primero."
+				end
 				town:remove_resident(member)
 				return true, table.concat({"Kicked " .. member.name, " from the town."})
 			else
@@ -1219,6 +1230,14 @@ function (player_name, params)
 			if pa[4] then
 				if pa[4] == "_order" then
 					return false
+				end
+				-- Never create/remove mayor via rank — use confirmed /town set mayor.
+				if pa[4] == "mayor" then
+					return false, "Usa /town set mayor <jugador> (pide confirmación en el Escritorio)."
+				end
+				-- Only the mayor may promote/demote co-mayor (co-mayors cannot mint peers).
+				if pa[4] == "comayor" and not has_flag(resident.flags, towny.RESIDENT_MAYOR) then
+					return false, "Solo el alcalde puede nombrar o quitar co-alcaldes."
 				end
 				local flag = towny.registered_resident_flags[pa[4]]
 				if flag then
@@ -1302,6 +1321,14 @@ function (player_name, params)
 
 	return false
 end})
+
+-- Spanish alias for the Town Desk.
+core.register_chatcommand("pueblo", {
+	params = core.registered_chatcommands["town"].params,
+	description = "Alias de /town — abre el Escritorio del pueblo.",
+	privs = { towny = true },
+	func = core.registered_chatcommands["town"].func,
+})
 
 local no_block_str = "There is no block here."
 

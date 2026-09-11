@@ -305,7 +305,7 @@ end
 ---
 --- Devuelve la táctica que impone el encuentro, o nil si decide seguir a lo suyo
 --- (y hasta eso lo dice en voz alta).
-function hashimon_alen.encounter(self, player, d)
+function hashimon_alen.encounter(self, player, d, insisted)
 	local name = player:get_player_name()
 	local r = hashimon_alen.knows(name)
 	local grudge = r and r.grudge or 0
@@ -318,6 +318,19 @@ function hashimon_alen.encounter(self, player, d)
 		self._target = player
 		hashimon_alen.say(grudge >= 35 and "ON_ENRAGED" or "ON_WARN_ATTACK",
 			{ force = true }, { name = name })
+		return "approach"
+	end
+
+	-- La suerte se tira UNA vez. Si te quedas, si orbitas, si insistes en estar
+	-- ahí, deja de ser suerte y pasa a ser insolencia — y va ANTES del dado, no
+	-- después: en la partida con dos jugadores uno daba vueltas a su alrededor y
+	-- él seguía a lo suyo, porque el primer dado había salido "ignorar" y nada
+	-- volvía a tirarlo nunca. Insistir no es un caso más de la tirada. Es lo que
+	-- la cancela.
+	if insisted then
+		self._depart_until = nil
+		self._target = player
+		hashimon_alen.say("ON_INSISTED", { force = true }, { name = name })
 		return "approach"
 	end
 
@@ -339,10 +352,16 @@ function hashimon_alen.encounter(self, player, d)
 	return nil
 end
 
---- ¿Ha entrado alguien nuevo en su vista desde el último tick táctico?
-local function new_arrival(self, pos)
+--- Cuánto tiempo lleva alguien plantado en su radio antes de que quedarse ahí
+--- sea, por sí solo, una provocación.
+hashimon_alen.INSIST_AFTER = 9
+
+--- ¿Ha entrado alguien nuevo en su vista, o lleva alguien demasiado tiempo en
+--- ella? Las dos cosas producen un encuentro; la segunda no admite el dado.
+local function new_arrival(self, pos, dtime)
 	local range = hashimon_alen.tier().sight
 	self._known_near = self._known_near or {}
+	self._linger = self._linger or {}
 	local seen_now, arrival = {}, nil
 	for _, player in ipairs(core.get_connected_players()) do
 		local pp = player:get_pos()
@@ -354,19 +373,27 @@ local function new_arrival(self, pos)
 				if not self._known_near[n] and not arrival then
 					arrival = { player = player, d = d }
 				end
+				self._linger[n] = (self._linger[n] or 0) + (dtime or 0)
+				if not arrival and self._linger[n] >= hashimon_alen.INSIST_AFTER then
+					self._linger[n] = 0
+					arrival = { player = player, d = d, insisted = true }
+				end
 			end
 		end
+	end
+	for n in pairs(self._linger) do
+		if not seen_now[n] then self._linger[n] = nil end
 	end
 	self._known_near = seen_now
 	return arrival
 end
 
-local function decide(self, pos)
+local function decide(self, pos, dtime)
 	-- El encuentro se evalúa SIEMPRE, incluso mientras se retira. Que se vaya
 	-- volando no puede significar que seas invisible.
-	local arrival = new_arrival(self, pos)
+	local arrival = new_arrival(self, pos, dtime)
 	if arrival then
-		local forced = hashimon_alen.encounter(self, arrival.player, arrival.d)
+		local forced = hashimon_alen.encounter(self, arrival.player, arrival.d, arrival.insisted)
 		if forced then
 			self._target = arrival.player
 			return forced
@@ -414,8 +441,35 @@ local function decide(self, pos)
 		if cat then hashimon_alen.say(cat) end
 	end
 	-- Si le estás hablando, se para. Y si le has picado la curiosidad, también.
-	if in_conversation_with(name) or wants_to_watch(self, name, d) then
-		return "listen"
+	--
+	-- Pero NO en mitad de una pelea. Hablar mientras te lanza fuego no funciona
+	-- mecánicamente —no da tiempo a escribir, y él se quedaba plantado
+	-- escuchando mientras lo apaleabas—, así que el combate cierra la puerta de
+	-- la conversación en vez de fingir que caben las dos cosas.
+	if not self._fight then
+		if in_conversation_with(name) or wants_to_watch(self, name, d) then
+			return "listen"
+		end
+	end
+
+	-- ASEDIO. Lo dijo la partida mejor de lo que lo diría un comentario: "cuando
+	-- me meto a una casa se queda ahí flotando todo torpe. Él sabe que estoy en
+	-- la casa, él sabe las coordenadas, él me vio. ¿Qué parte de la casa es la
+	-- que lo detiene?". Nada. Te ve, pierde la línea de tiro, y entonces el
+	-- objetivo deja de ser tu cuerpo y pasa a ser el techo que tienes encima.
+	local tpos = target:get_pos()
+	local los = tpos and hashimon_alen.has_los(pos, tpos)
+	-- Un cerro delante no es una casa. El asedio pide las dos cosas: que no lo
+	-- vea Y que tenga algo encima — si no, cualquier colina lo pondría a
+	-- bombardear el paisaje, que es tan tonto como quedarse flotando.
+	local roofed = tpos and hashimon_alen.roof_over(tpos) or false
+	if los or not roofed then
+		self._no_los_for = 0
+	elseif d <= hashimon_alen.tier().pursuit then
+		self._no_los_for = (self._no_los_for or 0) + (dtime or 1)
+		if self._no_los_for >= hashimon_alen.SIEGE_AFTER then
+			return "siege"
+		end
 	end
 
 	if d < hashimon_alen.STRAFE_MIN then
@@ -428,6 +482,10 @@ local function decide(self, pos)
 	end
 	return "approach"
 end
+
+-- Segundos sin línea de visión sobre alguien que sigue cerca antes de que la
+-- pared deje de ser un obstáculo y pase a ser el objetivo.
+hashimon_alen.SIEGE_AFTER = 3.0
 
 local function act(self, mode, pos, dtime)
 	local target = self._target
@@ -525,6 +583,31 @@ local function act(self, mode, pos, dtime)
 			hashimon_alen.set_anim(self, "hover")
 		end
 
+	elseif mode == "siege" then
+		-- Te has metido bajo techo. Se coloca a tiro del EDIFICIO, no de ti,
+		-- avisa una vez —siempre avisa— y le tira el cubo encima. Si el pueblo
+		-- está en paz `core.is_protected` no dejará caer un solo nodo y el cubo
+		-- será sonido y humo: eso es correcto y es la regla, no un fallo. El
+		-- aviso, en cambio, lo oyes igual.
+		if tpos then
+			local stand = {
+				x = tpos.x + (pos.x - tpos.x) * 0.6,
+				y = tpos.y + 14,
+				z = tpos.z + (pos.z - tpos.z) * 0.6,
+			}
+			hashimon_alen.move_to(self, stand, dtime,
+				{ target = target, critical = true })
+			if not self._siege_warned or core.get_gametime() - self._siege_warned > 25 then
+				self._siege_warned = core.get_gametime()
+				hashimon_alen.say("ON_SIEGE", { force = true },
+					{ name = target:get_player_name() })
+			end
+			-- El techo. Se apunta un poco por encima de él para que el estallido
+			-- caiga sobre la estructura y no contra la fachada.
+			local roof = { x = tpos.x, y = tpos.y + 3, z = tpos.z }
+			hashimon_alen.begin_firecube_at(self, roof, target)
+		end
+
 	elseif mode == "depart" then
 		-- La salida que pediste: se aleja de verdad, con la locomoción, y puede
 		-- acabar en FLY_FAST si le apetece la salida dramática. Nada de saltos.
@@ -570,6 +653,12 @@ function hashimon_alen.think(self, dtime)
 		return
 	end
 
+	-- El picado manda sobre la táctica igual que la carga del cubo: una vez que
+	-- se ha dejado caer, no hay nada que decidir hasta que toque el suelo.
+	if hashimon_alen.step_dive(self, dtime) then
+		return
+	end
+
 	-- Despegar y aterrizar mandan sobre todo lo demás. Van ANTES que la táctica
 	-- porque hay ramas tácticas que frenan la velocidad a mano y peleaban contra
 	-- el descenso.
@@ -609,19 +698,30 @@ function hashimon_alen.think(self, dtime)
 		})
 	end
 
+	-- Un plan NO puede volverlo ciego. Esto era una vía de "me ignora" que no
+	-- tenía nada que ver con su carácter: mientras corría un `patrol_area` o un
+	-- `goto`, la táctica ni se evaluaba, así que podías darle vueltas encima
+	-- durante todo el presupuesto del plan y él seguía a lo suyo. Un plan es una
+	-- intención a minutos; un jugador a veinte nodos es ahora.
+	local intruder, idist = hashimon_alen.nearest_player(pos, 24)
+	if self.plan and intruder and (self._fight or (idist and idist < 16)) then
+		hashimon_alen.clear_plan(self, "interrumpido_por_jugador")
+	end
+
 	if step_plan(self, dtime) then
 		-- Un plan activo con un verbo "hunt" sigue necesitando el combate táctico.
 		local v = self.plan and self.plan.verbs[self.plan.i]
 		if v and v.op == "hunt" and self._target then
-			act(self, decide(self, pos), pos, dtime)
+			act(self, decide(self, pos, dtime), pos, dtime)
 		end
 		return
 	end
 
 	self._tactic_acc = (self._tactic_acc or 0) + dtime
 	if self._tactic_acc >= hashimon_alen.TACTIC_INTERVAL then
+		local tdt = self._tactic_acc
 		self._tactic_acc = 0
-		self.mode = decide(self, pos)
+		self.mode = decide(self, pos, tdt)
 		self.mood = self.mode
 	end
 	act(self, self.mode or "patrol", pos, dtime)

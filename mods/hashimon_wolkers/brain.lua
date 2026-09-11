@@ -12,7 +12,41 @@ hashimon_wolkers.SIGHT = 16          -- lo que un aldeano ve; no es un vigía
 hashimon_wolkers.FLEE_DIST = 10      -- se aparta de un hostil hasta esta distancia
 hashimon_wolkers.HOME_LEASH = 24     -- fuera de esto vuelve a casa: no hay expediciones
 
-local SPEED = { wander = 1.4, work = 1.4, flee = 3.6, home = 2.2 }
+-- --- Milicia (Fase 4) ------------------------------------------------------------------
+--
+-- La regla que gobierna todo lo de abajo: **los guardias retrasan y encarecen un raid, no
+-- lo ganan**. Un town se defiende con criaturas; la población es lo que hay que proteger.
+-- Por eso el golpe es pequeño, el enfriamiento largo, y un guardia solo pierde contra
+-- cualquier cosa armada. Lo que consiguen entre varios es que robar cueste tiempo, y el
+-- tiempo es lo que da al dueño la oportunidad de llegar.
+hashimon_wolkers.GUARD_REACH = 2.4      -- a cuánto pega un guardia
+hashimon_wolkers.GUARD_COOLDOWN = 1.6   -- segundos entre golpes
+hashimon_wolkers.GUARD_DAMAGE_MAX = 2   -- daño con vigor 255; escala con el vigor
+hashimon_wolkers.GUARD_STAND = 14       -- hasta dónde persigue desde su casa
+hashimon_wolkers.ALARM_RANGE = 24       -- a quién despierta ver a un hostil
+hashimon_wolkers.TEMPLE_HOLD = 90       -- temple mínimo para plantarse en vez de huir
+
+local SPEED = { wander = 1.4, work = 1.4, flee = 3.6, home = 2.2, defend = 2.8 }
+
+--- ¿Este wolker es de los que se plantan? Guardia, y con temple. Un guardia acobardado
+--- huye como cualquiera: el rasgo existe para que no todos los guardias sean iguales.
+local function is_guard(self)
+	local w = self.wolker
+	if not w then
+		return false
+	end
+	local role = w.role or (w.oficio and hashimon_wolkers.role_of(w.oficio))
+	if role ~= "guardia" then
+		return false
+	end
+	-- Las crías no pelean. Nunca.
+	if w.stage == "child" then
+		return false
+	end
+	return (w.temple or 0) >= hashimon_wolkers.TEMPLE_HOLD
+end
+
+hashimon_wolkers.is_guard = is_guard
 
 local function dist(a, b)
 	return vector.distance(a, b)
@@ -70,8 +104,25 @@ end
 --- es leer las prioridades de un aldeano: la vida, luego el pueblo, luego el trabajo.
 local function decide(self, pos)
 	local hostile, hd = nearest_hostile(self, pos)
-	if hostile and hd < hashimon_wolkers.FLEE_DIST then
-		return "flee", hostile:get_pos()
+	if hostile then
+		-- Ver a un hostil es noticia: se avisa al vecindario aunque este wolker huya.
+		hashimon_wolkers.raise_alarm(self, hostile)
+
+		if is_guard(self) then
+			-- Un guardia se planta, pero no se va de expedición: si el hostil se aleja de
+			-- su casa más de GUARD_STAND, deja de perseguir. Perseguir por el mapa es como
+			-- un pueblo se queda sin guardias.
+			local home = self.wolker and self.wolker.home
+			local far = home and dist(hostile:get_pos(), home) > hashimon_wolkers.GUARD_STAND
+			if not far then
+				return "defend", hostile
+			end
+			return "home", home
+		end
+
+		if hd < hashimon_wolkers.FLEE_DIST then
+			return "flee", hostile:get_pos()
+		end
 	end
 
 	local posture = hashimon_wolkers.posture_for(self.wolker and self.wolker.town)
@@ -115,6 +166,25 @@ function hashimon_wolkers.think(self, _moveresult)
 	local state, target = decide(self, pos)
 	self._state = state
 
+	if state == "defend" then
+		-- Único estado cuyo `target` es un ObjectRef y no una posición: el guardia sigue a
+		-- quien se mueve, no a dónde estaba.
+		local tp = target and target.get_pos and target:get_pos()
+		if not tp then
+			halt(self, "stand")
+			return
+		end
+		if dist(pos, tp) > hashimon_wolkers.GUARD_REACH then
+			walk_toward(self, tp, SPEED.defend)
+			return
+		end
+		-- `work` es la pista de golpear del contrato (labrar, martillear); mientras no haya
+		-- una de combate, un guardia que pega se ve como un guardia que trabaja duro.
+		halt(self, "work")
+		hashimon_wolkers.guard_strike(self, target)
+		return
+	end
+
 	if state == "flee" then
 		-- Huir es alejarse del hostil, no correr hacia un punto: se refleja el vector.
 		local away = vector.add(pos, vector.multiply(vector.direction(target, pos), 8))
@@ -145,6 +215,57 @@ function hashimon_wolkers.think(self, _moveresult)
 		return
 	end
 	halt(self, "stand")
+end
+
+--- El golpe de un guardia. Pequeño a propósito y escalado por su vigor: hace falta un
+--- puñado de guardias y varios segundos para hacerle mella a algo armado, que es
+--- exactamente el papel que tienen. Respeta un enfriamiento propio para que dos guardias
+--- pegados no se conviertan en una ametralladora.
+function hashimon_wolkers.guard_strike(self, target)
+	local now = core.get_us_time() / 1000000
+	if self._last_strike and now - self._last_strike < hashimon_wolkers.GUARD_COOLDOWN then
+		return
+	end
+	self._last_strike = now
+
+	local vigor = (self.wolker and self.wolker.vigor) or 0
+	local damage = math.max(1, math.floor(hashimon_wolkers.GUARD_DAMAGE_MAX * vigor / 255 + 0.5))
+	target:punch(self.object, hashimon_wolkers.GUARD_COOLDOWN, {
+		full_punch_interval = hashimon_wolkers.GUARD_COOLDOWN,
+		damage_groups = { fleshy = damage },
+	})
+end
+
+--- Ver a un hostil despierta al vecindario: los guardias cercanos acuden y los demás echan
+--- a correr. Es lo que convierte un robo silencioso en un escándalo, y lo que hace que la
+--- milicia funcione en grupo sin que ninguno sepa nada del resto.
+function hashimon_wolkers.raise_alarm(self, hostile)
+	local now = core.get_us_time() / 1000000
+	if self._last_alarm and now - self._last_alarm < 3 then
+		return
+	end
+	self._last_alarm = now
+
+	local pos = self.object:get_pos()
+	local name = hostile.get_player_name and hostile:get_player_name() or nil
+	if not pos then
+		return
+	end
+	for _, obj in ipairs(core.get_objects_inside_radius(pos, hashimon_wolkers.ALARM_RANGE)) do
+		local ent = obj:get_luaentity()
+		if ent and ent.wolker and ent ~= self
+			and ent.wolker.town == (self.wolker and self.wolker.town) then
+			-- El rencor es lo que hace que un residente que pega también cuente como
+			-- hostil para los vecinos, no sólo para su víctima.
+			if name then
+				ent._grudge = name
+			end
+			ent._think = hashimon_wolkers.TACTIC_INTERVAL -- que reaccione en el acto
+		end
+	end
+	if name then
+		hashimon_wolkers.note_town_hostile(self.wolker and self.wolker.town, name)
+	end
 end
 
 --- Alguien le pegó. Dos consecuencias: le guarda rencor a ese nombre (deja de tratarlo como

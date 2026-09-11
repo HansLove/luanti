@@ -466,6 +466,26 @@ function hashimon.arrive_map_marker(secret, payload, callback)
 	end)
 end
 
+-- Push last-known world position (checkpoint) for the website map. Not real-time.
+-- callback(ok, err) optional.
+function hashimon.push_player_position(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-player-position",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not callback then return end
+		if not res.completed then callback(false, "request_incomplete"); return end
+		if res.code ~= 200 then callback(false, http_failure_code(res)); return end
+		callback(true, nil)
+	end)
+end
+
 -- Push an in-game signup to the API. `entry` is the "#1#salt#verifier" the
 -- engine handed to create_auth; the plaintext never reaches this server.
 function hashimon.luanti_register(secret, name, entry, callback)
@@ -666,5 +686,26 @@ function hashimon.ask_wolker_council(secret, payload, callback)
 		local body = parse_json_or_nil(res.data)
 		if not body or not body.posture then callback(false, "bad_response", nil); return end
 		callback(true, nil, body)
+	end)
+end
+
+-- Empuja lo que sólo el mundo ve del techo de población: camas construidas dentro del claim
+-- y dónde arde el Hogar. Devuelve el techo ya recalculado para que el HUD del alcalde pueda
+-- decirle cuál de los tres términos le está frenando.
+function hashimon.push_wolker_capacity(secret, payload, callback)
+	hashimon.http_request({
+		url = hashimon.get_api_url() .. "/internal/luanti-wolkers-capacity",
+		method = "POST",
+		extra_headers = extra_headers({
+			{ "X-Luanti-Secret", secret },
+			{ "Content-Type", "application/json" },
+			{ "Accept", "application/json" },
+		}),
+		data = core.write_json(payload),
+	}, function(res)
+		if not res.completed then if callback then callback(false, "request_incomplete", nil) end; return end
+		if res.code ~= 200 then if callback then callback(false, http_failure_code(res), nil) end; return end
+		local body = parse_json_or_nil(res.data)
+		if callback then callback(true, nil, body and body.capacity or nil) end
 	end)
 end

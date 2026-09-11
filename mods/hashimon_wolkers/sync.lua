@@ -208,6 +208,25 @@ local function ask_council(town)
 	end)
 end
 
+--- Reparto de oficios del padrón que tenemos cacheado. Es una lectura local: el censo
+--- completo vive en la API, esto sólo cuenta lo que ya se ha pedido para este town.
+function hashimon_wolkers.role_census(town)
+	local out = { guardia = 0, granjero = 0, constructor = 0, porteador = 0, total = 0 }
+	local seen = false
+	for _, w in pairs(roster) do
+		if w.town == town then
+			seen = true
+			local role = w.role or (w.oficio and hashimon_wolkers.role_of(w.oficio)) or "granjero"
+			out[role] = (out[role] or 0) + 1
+			out.total = out.total + 1
+		end
+	end
+	if not seen then
+		return nil
+	end
+	return out
+end
+
 function hashimon_wolkers.posture_info(town)
 	return towns_seen[town]
 end

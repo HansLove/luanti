@@ -486,6 +486,23 @@ function persistent_map.get_player_data(player_name)
 	return player_data[player_name]
 end
 
+--- Ensure in-memory player_data exists for an online player (fixes race with map_sync).
+function persistent_map.ensure_player_data(player_name)
+	if player_data[player_name] then
+		return true
+	end
+	if not minetest.get_player_by_name(player_name) then
+		return false
+	end
+	player_data[player_name] = {
+		discovered_tiles = load_player_tiles(player_name),
+		markers = load_player_markers(player_name),
+		last_tile_x = nil,
+		last_tile_z = nil,
+	}
+	return true
+end
+
 function persistent_map.get_map_view_offset(player_name)
 	return map_view_offset[player_name]
 end
@@ -515,21 +532,22 @@ function persistent_map.add_marker_for_player(player_name, pos, name, color_inde
 end
 
 --- Upsert a marker keyed by a stable API id (`api_<uuid>`), for web↔world sync.
+--- Website waypoints are authoritative: skip genesis bounds so a pin from /map always lands.
 function persistent_map.upsert_api_marker(player_name, api_id, pos, name, color_index)
-	if not player_data[player_name] then
+	if not persistent_map.ensure_player_data(player_name) then
 		return false, "player not loaded"
 	end
 	if not api_id or api_id == "" then
 		return false, "missing api_id"
 	end
-	if not persistent_map.is_pos_in_bounds(pos) then
-		return false, "Cannot place marker outside the genesis map region"
+	if type(pos) ~= "table" or pos.x == nil or pos.z == nil then
+		return false, "bad pos"
 	end
 	local markers = player_data[player_name].markers
 	local marker_id = "api_" .. tostring(api_id):gsub("-", "")
 	markers[marker_id] = {
 		x = pos.x,
-		y = pos.y,
+		y = pos.y or 8,
 		z = pos.z,
 		color_index = color_index or 1,
 		name = name or "Waypoint",

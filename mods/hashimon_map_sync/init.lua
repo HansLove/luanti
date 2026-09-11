@@ -13,6 +13,7 @@ end
 local POLL_INTERVAL = 30.0
 local JOIN_DELAY = 4.0
 local ARRIVE_CHECK = 2.0
+local POS_INTERVAL = 300.0 -- 5 min checkpoint while online
 local BLOCK_SIZE = 16
 
 -- Last applied quest markers per player (for proximity): { id, x, y, z, radius, label }
@@ -21,6 +22,30 @@ local quests = {}
 local capital_cache = {}
 local busy = {}
 local arrive_busy = {}
+local pos_busy = {}
+local pos_acc = {}
+local last_applied_count = {}
+
+local function push_position(name, player)
+	if pos_busy[name] then return end
+	if not hashimon.push_player_position then return end
+	if hashimon.is_api_owner and not hashimon.is_api_owner(name) then
+		return
+	end
+	local secret = hashimon.get_server_secret and hashimon.get_server_secret()
+	if not secret then return end
+	local pos = player:get_pos()
+	if not pos then return end
+	pos_busy[name] = true
+	hashimon.push_player_position(secret, {
+		name = name,
+		x = pos.x,
+		y = pos.y,
+		z = pos.z,
+	}, function()
+		pos_busy[name] = nil
+	end)
+end
 
 local function color_for_kind(kind)
 	if kind == "nation" then return 5 end      -- Purple
@@ -30,10 +55,16 @@ end
 
 local function apply_markers(name, markers, capital)
 	if not persistent_map or not persistent_map.upsert_api_marker then
+		core.log("warning", "[hashimon_map_sync] discovery_maps upsert missing — cannot apply web markers")
 		return
+	end
+	if persistent_map.ensure_player_data then
+		persistent_map.ensure_player_data(name)
 	end
 	local keep = {}
 	local qlist = {}
+	local applied = 0
+	local failed = 0
 	for _, m in ipairs(markers or {}) do
 		if type(m) == "table" and type(m.id) == "string" then
 			keep[#keep + 1] = m.id
@@ -42,13 +73,19 @@ local function apply_markers(name, markers, capital)
 				y = tonumber(m.y) or 8,
 				z = tonumber(m.z) or 0,
 			}
-			persistent_map.upsert_api_marker(
-				name,
-				m.id,
-				pos,
-				m.label or "Waypoint",
-				tonumber(m.colorIndex) or color_for_kind(m.kind)
-			)
+			-- JSON may arrive as colorIndex (API) or color_index
+			local color = tonumber(m.colorIndex) or tonumber(m.color_index) or color_for_kind(m.kind)
+			local label = m.label or m.name or "Waypoint"
+			local ok, err = persistent_map.upsert_api_marker(name, m.id, pos, label, color)
+			if ok then
+				applied = applied + 1
+			else
+				failed = failed + 1
+				core.log("warning",
+					"[hashimon_map_sync] upsert failed for " .. name .. " id=" .. m.id
+						.. " (" .. tostring(err) .. ") at "
+						.. tostring(pos.x) .. "," .. tostring(pos.z))
+			end
 			if m.kind == "hashimon" then
 				local meta = type(m.meta) == "table" and m.meta or {}
 				qlist[#qlist + 1] = {
@@ -57,7 +94,7 @@ local function apply_markers(name, markers, capital)
 					y = pos.y,
 					z = pos.z,
 					radius = tonumber(meta.radius) or 32,
-					label = m.label or "Hashimon",
+					label = label,
 				}
 			end
 		end
@@ -72,28 +109,73 @@ local function apply_markers(name, markers, capital)
 			x = tonumber(capital.world.x),
 			y = tonumber(capital.world.y),
 			z = tonumber(capital.world.z),
-			town = capital.townName,
+			town = capital.townName or capital.town_name,
 		}
+	end
+
+	core.log("action", string.format(
+		"[hashimon_map_sync] %s: web markers applied=%d failed=%d total_api=%d",
+		name, applied, failed, #(markers or {})
+	))
+	local prev = last_applied_count[name]
+	last_applied_count[name] = applied
+	if applied > 0 and prev ~= applied and core.get_player_by_name(name) then
+		core.chat_send_player(name,
+			("[Hashimon] Mapa web: %d punto(s) sincronizado(s). Abre Marker Management o /map.")
+				:format(applied))
+	elseif failed > 0 and core.get_player_by_name(name) then
+		core.chat_send_player(name,
+			("[Hashimon] Mapa web: %d punto(s) no se pudieron aplicar (mira el log).")
+				:format(failed))
 	end
 end
 
-local function pull(name)
-	if busy[name] then return end
-	if hashimon.is_api_owner and not hashimon.is_api_owner(name) then
+local function pull(name, done)
+	if busy[name] then
+		if done then done(false, "busy") end
 		return
 	end
+	-- Do not gate on can_own: waypoints live on the API by username. Guests / owners
+	-- with a matching web account should sync; unknown names just get an empty list.
 	local secret = hashimon.get_server_secret and hashimon.get_server_secret()
-	if not secret then return end
+	if not secret or secret == "" then
+		core.log("warning", "[hashimon_map_sync] hashimon_server_secret empty — cannot fetch markers")
+		if done then done(false, "no_secret") end
+		return
+	end
 	busy[name] = true
 	hashimon.fetch_map_markers(secret, name, function(ok, err, markers, capital)
 		busy[name] = nil
 		if not ok then
-			core.log("info", "[hashimon_map_sync] fetch failed for " .. name .. ": " .. tostring(err))
+			core.log("warning", "[hashimon_map_sync] fetch failed for " .. name .. ": " .. tostring(err))
+			if done then done(false, err) end
 			return
 		end
-		if not core.get_player_by_name(name) then return end
+		if not core.get_player_by_name(name) then
+			if done then done(false, "left") end
+			return
+		end
 		apply_markers(name, markers, capital)
+		if done then done(true, nil) end
 	end)
+end
+
+-- Public so Marker Management /map can force a refresh before listing.
+hashimon_map_sync = hashimon_map_sync or {}
+function hashimon_map_sync.pull_now(name)
+	if type(name) ~= "string" or name == "" then return end
+	busy[name] = nil -- allow re-entry
+	pull(name)
+end
+
+--- Async pull; `done(ok, err)` runs after apply (or on early failure).
+function hashimon_map_sync.pull_then(name, done)
+	if type(name) ~= "string" or name == "" then
+		if done then done(false, "bad_name") end
+		return
+	end
+	busy[name] = nil
+	pull(name, done)
 end
 
 local function capital_from_towny(name)
@@ -122,10 +204,14 @@ end)
 
 core.register_on_leaveplayer(function(player)
 	local name = player:get_player_name()
+	push_position(name, player)
 	quests[name] = nil
 	capital_cache[name] = nil
 	busy[name] = nil
 	arrive_busy[name] = nil
+	pos_busy[name] = nil
+	pos_acc[name] = nil
+	last_applied_count[name] = nil
 end)
 
 local poll_acc = 0
@@ -135,6 +221,22 @@ core.register_globalstep(function(dtime)
 	poll_acc = 0
 	for _, player in ipairs(core.get_connected_players()) do
 		pull(player:get_player_name())
+	end
+end)
+
+-- Periodic checkpoint while online (~5 min). leaveplayer also pushes.
+local pos_tick = 0
+core.register_globalstep(function(dtime)
+	pos_tick = pos_tick + dtime
+	if pos_tick < 5.0 then return end
+	pos_tick = 0
+	for _, player in ipairs(core.get_connected_players()) do
+		local name = player:get_player_name()
+		pos_acc[name] = (pos_acc[name] or 0) + 5.0
+		if pos_acc[name] >= POS_INTERVAL then
+			pos_acc[name] = 0
+			push_position(name, player)
+		end
 	end
 end)
 
@@ -184,6 +286,15 @@ core.register_globalstep(function(dtime)
 end)
 
 -- Same capital world coords as the website (API capital or Towny homeblock × 16 + 8).
+core.register_chatcommand("mapsync", {
+	description = "Pull website waypoints into your in-game map now.",
+	func = function(name)
+		last_applied_count[name] = nil -- force chat feedback
+		hashimon_map_sync.pull_now(name)
+		return true, "Sincronizando puntos del mapa web…"
+	end,
+})
+
 core.register_chatcommand("nation", {
 	params = "home",
 	description = "Show your nation's capital world coordinates (same as the website map).",
@@ -206,4 +317,4 @@ core.register_chatcommand("nation", {
 	end,
 })
 
-core.log("action", "[hashimon_map_sync] loaded — web waypoints + Hashimon destinations + /nation home")
+core.log("action", "[hashimon_map_sync] loaded — web waypoints + checkpoints + Hashimon destinations + /nation home")

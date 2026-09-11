@@ -19,7 +19,7 @@ else
 fi
 
 mkdir -p "$USER_MODS"
-for mod in hashimon_core hashimon_entities hashimon_bodies hashimon_bodies_dmobs hashimon_village_war discovery_maps hashimon_qr_tree hashimon_magi hashimon_space_whales hashimon_players hashimon_wolkers; do
+for mod in hashimon_core hashimon_entities hashimon_bodies hashimon_bodies_dmobs hashimon_village_war discovery_maps hashimon_qr_tree hashimon_magi hashimon_space_whales hashimon_players hashimon_wolkers hashimon_claim hashimon_towny_sync hashimon_towny_border hashimon_map_sync hashimon_war hashimon_vibing hashimon_alen hashimon_town_desk; do
 	dest="$USER_MODS/$mod"
 	if [[ -L "$dest" || -d "$dest" ]]; then
 		rm -rf "$dest"
@@ -27,6 +27,12 @@ for mod in hashimon_core hashimon_entities hashimon_bodies hashimon_bodies_dmobs
 	ln -sf "$SRC/$mod" "$dest"
 	echo "Installed mod: $dest -> $SRC/$mod"
 done
+
+# Keep stock ContentDB "towny" modpack if present. Do NOT replace it with our
+# fork — Town Desk is the additive mod hashimon_town_desk (depends = towny).
+if [[ ! -e "$USER_MODS/towny" ]]; then
+	echo "WARNING: $USER_MODS/towny missing. Install Towny from ContentDB, then re-run."
+fi
 
 touch "$CONF"
 if ! grep -q '^secure.http_mods.*hashimon_core' "$CONF" 2>/dev/null; then
@@ -54,6 +60,7 @@ echo "     Required for Bob avatar: hashimon_players"
 echo "     Add to world.mt if missing:"
 echo "       load_mod_hashimon_players = mods/hashimon_players"
 echo "       load_mod_hashimon_bodies_dmobs = mods/hashimon_bodies_dmobs"
+echo "       load_mod_hashimon_map_sync = mods/hashimon_map_sync"
 echo "  4. Start API: cd api && npm run dev"
 echo "  5. In-game: /hashimon session → /hashimon starter → /hashimon sync"
 echo "  6. QR sponsors (admin): /qr_tree place aarontolentino → /qr_tree align aarontolentino"

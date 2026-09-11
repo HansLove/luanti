@@ -37,6 +37,19 @@ function hashimon_wolkers.appearance_of(id, age_days)
 	return { sign = sign, stage = stage, model = model }
 end
 
+-- Los cuatro oficios, repartidos en 4×64 sobre el byte `oficio`. GEMELO de `roleOf` en
+-- api/src/domain/wolkers.ts: el servidor manda el rol en el padrón, pero el mundo sabe
+-- calcularlo para no tener que preguntar otra vez cuando una cría crece.
+--
+-- El oficio es azar del linaje, no una elección del alcalde: una nación puede tener mala
+-- mano y quedarse sin guardias, y entonces necesita inmigración o suerte en la camada.
+local ROLES = { "granjero", "constructor", "guardia", "porteador" }
+
+function hashimon_wolkers.role_of(oficio)
+	local idx = math.floor((oficio % 256) / 64) + 1
+	return ROLES[idx] or "granjero"
+end
+
 --- Entidad registrada para un modelo. Un nombre por pieza, sin sufijos por wolker.
 function hashimon_wolkers.entity_for(model)
 	return "hashimon_wolkers:" .. model

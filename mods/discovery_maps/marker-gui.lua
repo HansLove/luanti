@@ -114,7 +114,10 @@ local function marker_id_for_index(player_name, index)
 	return rows[tonumber(index)]
 end
 
-function persistent_map.show_marker_gui(player_name)
+-- Avoid re-entrancy when we refresh the formspec after an async web pull.
+local marker_gui_syncing = {}
+
+local function render_marker_gui(player_name)
 	local player = minetest.get_player_by_name(player_name)
 	if not player then
 		return
@@ -400,6 +403,27 @@ function persistent_map.show_marker_gui(player_name)
 	end
 
 	minetest.show_formspec(player_name, "persistent_map:marker_gui", table.concat(formspec))
+end
+
+function persistent_map.show_marker_gui(player_name, opts)
+	opts = opts or {}
+	-- Pull website waypoints, then re-render so Total: N matches /map (fetch is async).
+	-- Call render_marker_gui directly after sync (not show_marker_gui) so map-party wrappers
+	-- cannot drop opts and restart an infinite pull loop.
+	local sync = rawget(_G, "hashimon_map_sync")
+	if not opts.skip_sync
+			and not marker_gui_syncing[player_name]
+			and type(sync) == "table"
+			and sync.pull_then then
+		marker_gui_syncing[player_name] = true
+		sync.pull_then(player_name, function()
+			marker_gui_syncing[player_name] = nil
+			if minetest.get_player_by_name(player_name) then
+				render_marker_gui(player_name)
+			end
+		end)
+	end
+	render_marker_gui(player_name)
 end
 
 local function show_color_selection_dialog(player_name, marker_id)
@@ -793,6 +817,7 @@ minetest.register_on_leaveplayer(function(player)
 	active_waypoints[player_name] = nil
 	marker_gui._row_ids[player_name] = nil
 	marker_gui._scroll_pos[player_name] = nil
+	marker_gui_syncing[player_name] = nil
 end)
 
 minetest.log("action", "[persistent_map] Marker GUI loaded (Hashimon UX)")

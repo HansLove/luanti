@@ -163,6 +163,52 @@ function hashimon_alen.should_engage(who, message, c)
 	return math.random() < base * (0.6 + hashimon_alen.traits().vanity)
 end
 
+--- ¿Habla con modelo, o con lo que está escrito a mano?
+---
+--- Por defecto, escrito a mano. La decisión es de la sexta partida y es del
+--- usuario, con sus palabras: "los argumentos de Alen son muy estúpidos, te dice
+--- cosas muy artificiales... prefiero hacerlo yo con alma, con espíritu, y mejor
+--- enfocarnos en su actuar lógico". El modelo seguía siendo correcto en las
+--- MÉTRICAS y flojo en la VOZ, así que se separa lo uno de lo otro: el banco de
+--- frases habla, y el modelo —cuando se enciende— sólo juzga.
+---
+--- Se enciende con `hashimon_alen_model_voice = true` en minetest.conf.
+local function model_voice()
+	return core.settings:get_bool("hashimon_alen_model_voice", false)
+end
+hashimon_alen.model_voice = model_voice
+
+--- Respuesta escrita, sin red y sin tokens. Elige el banco por lo que ya sabe de
+--- ti, que es información que el mod tiene entera y no necesita preguntarle a
+--- nadie.
+local function reply_offline(live, who, message)
+	local r = hashimon_alen.knows(who)
+	local grudge = r and r.grudge or 0
+	local sentiment = r and r.sentiment or 0
+	local tier = hashimon_alen.tier_toward(who)
+
+	local cat
+	if grudge >= 35 or tier.name == "WRATHFUL" then
+		cat = "ON_ENRAGED"
+	elseif tier.name == "ANGRY" then
+		cat = "ON_WARN_ATTACK"
+	elseif sentiment > 30 then
+		cat = "ON_PLAYER_LIKED"
+	elseif #message >= 40 then
+		cat = "ON_CHAT_LONG"
+	else
+		cat = "ON_GREETED_COLD"
+	end
+	hashimon_alen.say(cat, { force = true }, { name = who })
+
+	local pos = live.object:get_pos()
+	local player = core.get_player_by_name(who)
+	local pp = player and player:get_pos()
+	if pos and pp then
+		live.object:set_yaw(-math.atan2(pp.x - pos.x, pp.z - pos.z))
+	end
+end
+
 local function bridge_ready()
 	return hashimon and hashimon.alen_chat and hashimon.get_server_secret
 		and hashimon.get_server_secret() ~= ""
@@ -388,6 +434,22 @@ local function on_chat_body(name, message)
 			live.object:set_yaw(-math.atan2(pp.x - pos2.x, pp.z - pos2.z))
 		end
 		trace(name, message, "no se digna (should_engage)")
+		return
+	end
+
+	-- En mitad de una pelea no se conversa. Mecánicamente no cabe —no hay tiempo
+	-- de escribir mientras te llueve fuego— y el resultado era una conversación
+	-- lenta que parecía un bug. Si te está atacando, lo que recibes es una
+	-- sentencia, no una charla.
+	if live._fight or live._charging or live._dive_until then
+		hashimon_alen.say("ON_WARN_ATTACK", { force = true }, { name = name })
+		trace(name, message, "en combate: no conversa")
+		return
+	end
+
+	if not model_voice() then
+		reply_offline(live, name, message)
+		trace(name, message, "voz local (modelo desactivado)")
 		return
 	end
 

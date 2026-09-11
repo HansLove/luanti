@@ -545,12 +545,8 @@ end)
 -- Add button to marker GUI to access party management
 local original_show_marker_gui = persistent_map.show_marker_gui
 if original_show_marker_gui then
-    function persistent_map.show_marker_gui(player_name)
-        -- Call original function first
-        original_show_marker_gui(player_name)
-        
-        -- We could modify the marker GUI to include a party management button
-        -- but for now, we'll keep them separate
+    function persistent_map.show_marker_gui(player_name, opts)
+        original_show_marker_gui(player_name, opts)
     end
 end
 

@@ -85,6 +85,46 @@ hashimon_alen.PHRASES = {
 		"Mírame bien. Es lo último que ves gratis.",
 		"Ahora vas a entender la diferencia entre nosotros.",
 	},
+	-- Te dio igual el desprecio y seguiste ahí. La insistencia es su propia
+	-- ofensa: no le has hecho nada, y por eso mismo no tiene excusa para ti.
+	ON_INSISTED = {
+		"Sigues ahí, @1. Empiezo a tomármelo como una declaración.",
+		"He dejado pasar tu primera insolencia. La segunda es quedarte.",
+		"Das vueltas a mi alrededor como si esto fuera tuyo.",
+		"Te ignoré una vez. Considéralo el único regalo que vas a recibir.",
+		"¿Vienes a mirar, @1, o vienes a que te recuerden lo que soy?",
+		"Llevas demasiado tiempo dentro de mi sombra para seguir vivo por accidente.",
+	},
+
+	-- Te has metido bajo techo. Es lo único que se le ocurre más ofensivo que
+	-- plantarle cara: darle a entender que unos tablones lo detienen.
+	ON_SIEGE = {
+		"¿Crees que la madera me detiene, @1? La madera arde.",
+		"Sal de ahí. Si tengo que entrar yo, entraré por el techo.",
+		"Te has escondido en una caja y la has llamado casa.",
+		"Sé exactamente dónde estás. Lo que no sabes es cuánto le queda a ese tejado.",
+		"Cuento hasta que se me acabe la paciencia, @1. Ya voy por el final.",
+		"No hay puerta en este mundo que sea un argumento contra mí.",
+	},
+
+	-- Cuando aparta la piedra que le estorba. Corta, porque es un gesto de
+	-- fastidio, no un discurso.
+	ON_STUCK_CLEAR = {
+		"Estorbabas.",
+		"El mundo se aparta o lo aparto yo.",
+		"Piedra. Cuánta insistencia para tan poca cosa.",
+		"Nada de lo que se levantó aquí me estaba pidiendo permiso. Ahora sí.",
+	},
+
+	-- El meteorito: lo tocaste desde abajo mientras volaba.
+	ON_DIVE = {
+		"¿Me has tocado desde ahí abajo? Voy a bajar a tu altura.",
+		"Buena idea, @1. Ahora mira hacia arriba.",
+		"Me has llamado. Llego.",
+		"Querías que bajara. Que conste que lo pediste tú.",
+		"Se acabó el cielo, @1.",
+	},
+
 	ON_ENRAGED = {
 		"Corre.",
 		"Ya no hay conversación.",
@@ -184,6 +224,21 @@ hashimon_alen.PHRASES = {
 		"Más tarde.",
 		"No malgastes mi atención.",
 	},
+	-- Alguien le ha dicho algo con cuerpo y el modelo está apagado. No puede
+	-- responder al CONTENIDO, así que no lo finge: responde al hecho de que le
+	-- hablen, que es lo que un dios haría de todas formas. Es la diferencia entre
+	-- una respuesta corta con carácter y una respuesta larga sin alma.
+	ON_CHAT_LONG = {
+		"Hablas mucho para algo que dura tan poco.",
+		"He oído esa clase de palabras antes, @1. De bocas que ya no están.",
+		"Dices cosas como si yo tuviera que sopesarlas.",
+		"Guárdatelo. No he bajado hasta aquí para que me expliques el mundo.",
+		"Te escucho. No confundas eso con que me importe.",
+		"Interesante. Ninguna de esas palabras cambia nada.",
+		"Sigue. Quiero ver cuánto tardas en pedirme algo.",
+		"Muchas palabras, @1, y ni una sola que yo no supiera ya.",
+	},
+
 	ON_PLAYER_LIKED = {
 		"Tú no eres como los otros, @1.",
 		"@1. Bien.",

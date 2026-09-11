@@ -15,12 +15,44 @@ core.register_chatcommand("wolkers", {
 		if not town then
 			return false, "No perteneces a ningún town."
 		end
-		local info = hashimon_wolkers.posture_info(town.name)
-		if not info then
-			return true, town.name .. ": todavía sin noticias del consejo (postura: normal)."
+		local lines = { town.name .. ":" }
+
+		-- Lo primero que necesita saber un alcalde no es cuánta gente tiene: es QUÉ le está
+		-- frenando. El término más bajo de los tres es la obra que toca hacer mañana.
+		local cap = hashimon_wolkers.capacity_info(town.name)
+		if not cap then
+			table.insert(lines, "  Sin Hogar encendido: nadie puede nacer aquí todavía.")
+		else
+			local obra = {
+				beds = "construye camas",
+				food = "mina más croquetas",
+				blocks = "reclama más territorio",
+			}
+			table.insert(lines, string.format("  techo %d  (camas %d · comida %d · territorio %d)",
+				cap.cap, cap.byBeds, cap.byFood, cap.byBlocks))
+			table.insert(lines, string.format("  te frena: %s → %s",
+				cap.bottleneck, obra[cap.bottleneck] or "?"))
 		end
-		return true, string.format("%s → postura %s (%s): %s",
-			town.name, info.posture, info.source or "?", info.reason or "")
+
+		-- Reparto de oficios: un pueblo sin guardias no se defiende solo, y eso no se
+		-- arregla con un comando — se arregla con inmigración o con la siguiente camada.
+		local roles = hashimon_wolkers.role_census(town.name)
+		if roles then
+			table.insert(lines, string.format("  oficios: %d guardias · %d granjeros · %d constructores · %d porteadores",
+				roles.guardia, roles.granjero, roles.constructor, roles.porteador))
+			if roles.guardia == 0 and roles.total > 0 then
+				table.insert(lines, "  nadie se plantará si entran: no te ha tocado ningún guardia.")
+			end
+		end
+
+		local info = hashimon_wolkers.posture_info(town.name)
+		if info then
+			table.insert(lines, string.format("  postura %s (%s): %s",
+				info.posture, info.source or "?", info.reason or ""))
+		else
+			table.insert(lines, "  postura normal (sin noticias del consejo)")
+		end
+		return true, table.concat(lines, "\n")
 	end,
 })
 

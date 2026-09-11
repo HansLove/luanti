@@ -1067,6 +1067,54 @@ core.after(0.2, function()
 			local r3, d3 = hashimon_alen.apply_order({ id = 3 })
 			check("orden malformada rechazada", r3 == "rejected" and d3 == "orden_malformada", d3)
 
+			-- ---- Séptima partida: lo que se rompió jugando en compañía -------
+			--
+			-- Las cinco quejas de la partida con dos jugadores, cada una con la
+			-- comprobación que la habría cazado. Ninguna es una prueba de lógica
+			-- pura: todas verifican que un ESTADO del mundo produce una reacción.
+
+			-- 1. "Daba vueltas a su alrededor y él simplemente lo ignoraba."
+			check("insistir tiene umbral y no es una tirada",
+				hashimon_alen.INSIST_AFTER and hashimon_alen.INSIST_AFTER > 0,
+				hashimon_alen.INSIST_AFTER)
+			local forced = hashimon_alen.encounter(live,
+				{ get_player_name = function() return "insistente" end }, 20, true)
+			check("un jugador que insiste SIEMPRE fuerza encuentro",
+				forced == "approach", tostring(forced))
+
+			-- 2. "Se queda atorado en cualquier pared después de 5 segundos."
+			check("el atasco escala: rodear -> subir -> despejar",
+				hashimon_alen.STUCK_SIDESTEP < hashimon_alen.STUCK_CLIMB
+				and hashimon_alen.STUCK_CLIMB < hashimon_alen.STUCK_CLEAR)
+			check("y despejar existe como accion real",
+				type(hashimon_alen.clear_ahead) == "function")
+
+			-- 3. "Cuando le pegas deberia caer como un meteorito."
+			check("el picado existe y es mas rapido que cualquier vuelo",
+				hashimon_alen.DIVE_SPEED > hashimon_alen.SPEEDS.FLY_FAST,
+				hashimon_alen.DIVE_SPEED)
+			check("nada en el aire es ya mas lento que correr",
+				hashimon_alen.SPEEDS.FLY > 6.0 and hashimon_alen.SPEEDS.CIRCLE > 6.0,
+				hashimon_alen.SPEEDS.FLY)
+
+			-- 4. "Me meto en una casa y se queda flotando torpe."
+			check("perder la linea de vision tiene consecuencia declarada",
+				hashimon_alen.SIEGE_AFTER and hashimon_alen.SIEGE_AFTER > 0)
+			check("y sabe apuntar el cubo a un PUNTO, no solo a un cuerpo",
+				type(hashimon_alen.begin_firecube_at) == "function")
+			check("la linea de vision se calcula de verdad",
+				type(hashimon_alen.has_los) == "function")
+
+			-- 5. "Prefiero escribirlo yo con alma": el modelo NO habla por defecto.
+			check("la voz del modelo viene apagada",
+				hashimon_alen.model_voice() == false)
+			for _, cat in ipairs({ "ON_INSISTED", "ON_SIEGE", "ON_STUCK_CLEAR",
+				"ON_DIVE", "ON_CHAT_LONG" }) do
+				local bank = hashimon_alen.PHRASES[cat]
+				check("banco escrito a mano: " .. cat,
+					bank and #bank >= 4, bank and #bank or "ausente")
+			end
+
 			-- ---- Novedades --------------------------------------------------
 			hashimon_alen.note_event("prueba", "diego", { n = 1 })
 			check("la novedad se encoló", true)

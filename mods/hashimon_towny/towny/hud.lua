@@ -54,6 +54,32 @@ core.register_globalstep(function(dtime)
 
 		block_string = table.concat(str, " ")
 
+		-- Badge: pending invites (townless) or onboarding nudge (tiny town).
+		local badge = ""
+		local res = towny.residents[name]
+		if res and not res.town then
+			local n = 0
+			for i = 1, #(towny.town_array or {}) do
+				local t = towny.town_array[i]
+				if t.invites and t.invites[name] then n = n + 1 end
+			end
+			if n > 0 then
+				badge = " · " .. n .. " invitación(es) — Espacio+Z"
+			else
+				badge = " · Espacio+Z para fundar o unirte"
+			end
+		elseif res and res.town then
+			local town = res.town
+			local members = 0
+			for _ in pairs(town.members or {}) do members = members + 1 end
+			if #town < 2 then
+				badge = " · Objetivo: Expandir — Espacio+Z"
+			elseif members < 2 then
+				badge = " · Objetivo: Invitar — Espacio+Z"
+			end
+		end
+		block_string = block_string .. badge
+
 		local hud = towny.hud[name]
 		if not hud then
 			hud = {}

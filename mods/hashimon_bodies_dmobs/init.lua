@@ -188,6 +188,9 @@ R({
 R({
 	id = "ursine_panda",
 	family = "ursine",
+	-- Grafo V1: piel alternativa de Guardian B — no escalón Genesis.
+	-- Su 2ª textura es mobs_blood.png: si entra en la línea, el titan sale rojo.
+	natural_only = true,
 	mesh = "panda.b3d",
 	textures = { "dmobs_panda.png", "mobs_blood.png", "default_papyrus.png" },
 	visual_size_base = 1.0,

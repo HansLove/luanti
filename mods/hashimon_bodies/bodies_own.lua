@@ -77,6 +77,39 @@ hashimon_bodies.register_creatura_body({
 	makes_footstep_sound = true,
 })
 
+-- DRAGON — adulto propio. Etapa B del linaje Crown. Sustituye al wyvern MIT
+-- (`dragon_wyvern`). Pista 1–150: idle/walk/run + fly. Sin fly_boost/rocket/dive
+-- (la pista no llega a 201). Socket.Mount hijo de Torso, animado.
+-- GLB: adult_crown.glb → glb_for_luanti.py --yaw 180 --expect-frames 150
+hashimon_bodies.register_creatura_body({
+	id = "crown_adult",
+	family = "dragon",
+	replaces = "dragon_wyvern",
+	mesh = "hashimon_crown_adult.glb",
+	textures = { "hashimon_crown_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		wing_l = "Wing.L", wing_r = "Wing.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30, fly = 30 }),
+	capabilities = { walk = true, run = true, fly = true, swim = false, mount = true },
+	-- 1.51 = el peldaño B documentado del wyvern. Apex fire/ice miden 5.00.
+	hitbox = { width = 0.85, height = 1.51 },
+	mesh_height = 7.13,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 20, z = 4 },
+		eye_third = { x = 0, y = 14, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.50,
+		suggest_camera = "third",
+	},
+})
+
 -- ---------------------------------------------------------------------------
 -- URSINE — osezno propio. El tier 1 que a la línea Guardian le faltaba: antes,
 -- su cuerpo más bajo era un oso ADULTO de 1.00 nodos, así que un jugador de
@@ -102,6 +135,39 @@ hashimon_bodies.register_creatura_body({
 	hitbox = { width = 0.45, height = 0.75 },
 	mesh_height = 4.98,
 	makes_footstep_sound = true,
+})
+
+-- Guardian ★B genérico (fuego/agua/tierra/eléctrico). Sustituye al oso MIT
+-- (`ursine_bear`). Aire usa `guardian_adult_air` (replaces). Pista 1–110:
+-- idle/walk/run. Socket.Mount hijo de Torso.
+-- GLB: adult_guardian.glb → glb_for_luanti.py --yaw 180 --expect-frames 110
+hashimon_bodies.register_creatura_body({
+	id = "guardian_adult",
+	family = "ursine",
+	replaces = "ursine_bear",
+	mesh = "hashimon_guardian_adult.glb",
+	textures = { "hashimon_guardian_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	-- 1.4× vs el 1.00 original. mesh_height 19.13 es el export agrandado en
+	-- Blender; el tamaño EN JUEGO lo fija hitbox, no la malla.
+	hitbox = { width = 0.77, height = 1.40 },
+	mesh_height = 19.13,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 20, z = 4 },
+		eye_third = { x = 0, y = 14, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
 })
 
 -- ---------------------------------------------------------------------------
@@ -503,6 +569,9 @@ hashimon_bodies.register_creatura_body({
 })
 
 -- Mirror ★B: felino adulto propio. Sustituye thylacoleo; smilodon sigue como C.
+-- GLB: adult_mirror.glb → glb_for_luanti.py --yaw 180 --expect-frames 110
+-- Pista 1–500; se declaran idle/walk/run (1–110). Socket.Mount animado (hermano
+-- de Torso bajo Bone.001).
 hashimon_bodies.register_creatura_body({
 	id = "mirror_adult",
 	family = "feline",
@@ -510,12 +579,27 @@ hashimon_bodies.register_creatura_body({
 	mesh = "hashimon_mirror_adult.glb",
 	textures = { "hashimon_mirror_adult.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
-		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
-	capabilities = { walk = true, run = true, fly = false, swim = false, mount = false },
-	hitbox = { width = 0.55, height = 0.90 },
-	mesh_height = 9.57,
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	-- 1.4× visual. hitbox.height se queda en 0.90: smilodon (C) mide 0.95 y la
+	-- línea se ordena por altura — subir de 0.95 invertiría adulto y apex.
+	hitbox = { width = 0.77, height = 0.90 },
+	mesh_height = 32.02,
+	visual_size_base = 0.394, -- 0.90*10/32.02 * 1.4
 	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 16, z = 3 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.5,
+		suggest_camera = "third",
+	},
 })
 
 hashimon_bodies.register_creatura_body({
@@ -635,27 +719,43 @@ hashimon_bodies.register_creatura_body({
 -- decidían linaje y etapa. Éste es el primero que un elemento SELECCIONA:
 --
 --   `element`   sólo lo viste una criatura de aire. Para las demás no existe.
---   `replaces`  sustituye al oso genérico en su peldaño en vez de sumarse,
---               o ambos competirían por el mismo destino.
+--   `replaces`  sustituye al Guardian adulto genérico en su peldaño en vez de
+--               sumarse, o ambos competirían por el mismo destino.
 --
--- Trae `Socket.Tail`, el primer socket del proyecto. Todavía no hay
--- `Socket.Back`, así que un ala montada no tiene dónde anclarse: sus alas
--- tendrían que ir en el rig como `Wing.L/R`, que este cuerpo aún no declara.
+-- GLB: guardian_adult_air.glb → glb_for_luanti.py --yaw 180 --expect-frames 310
+-- (idle/walk + fly/fly_boost/fly_rocket/fly_dive). Socket.Mount animado (hermano
+-- de Torso bajo Root; el asiento está keyed al lomo). Socket.Tail sigue en el
+-- rig. Sin Wing.L/R ni Socket.Back: el vuelo lo llevan los brazos del clip.
 -- ---------------------------------------------------------------------------
 hashimon_bodies.register_creatura_body({
 	id = "guardian_adult_air",
 	family = "ursine",
 	element = "aire",
-	replaces = "ursine_bear",
+	replaces = "guardian_adult",
 	mesh = "hashimon_guardian_adult_air.glb",
 	textures = { "hashimon_guardian_adult_air.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
-		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
-	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
-	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({
+		idle = 30, walk = 30, fly = 30, fly_boost = 30,
+		fly_rocket = 30, fly_dive = 30,
+	}),
+	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
 	hitbox = { width = 0.55, height = 1.00 },
 	mesh_height = 11.12,
 	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 20, z = 4 },
+		eye_third = { x = 0, y = 14, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
 })
 
 -- ---------------------------------------------------------------------------
@@ -789,6 +889,45 @@ hashimon_bodies.register_creatura_body({
 		rot = { x = 0, y = 180, z = 0 },
 		eye_first = { x = 0, y = 24, z = 4 },
 		eye_third = { x = 0, y = 15, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
+})
+
+-- ---------------------------------------------------------------------------
+-- CAPA V2 · BEACON AGUA — pingüino adulto.
+--
+-- Sustituye al pteranodonte prestado (GPL) en el camino de un Beacon de agua.
+-- GLB: beacon_adult_water.glb → glb_for_luanti.py --yaw 180 --expect-frames 550
+-- Socket.Mount hijo de Torso. Clips: idle/walk/run + swim @161 + swim_boost @521.
+-- Wing.L en el rig (sin Wing.R); los brazos cubren el otro lado.
+-- ---------------------------------------------------------------------------
+hashimon_bodies.register_creatura_body({
+	id = "beacon_adult_water",
+	family = "avian",
+	element = "agua",
+	replaces = "pterosaur_pteranodon",
+	mesh = "hashimon_beacon_adult_water.glb",
+	textures = { "hashimon_beacon_adult_water.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		wing_l = "Wing.L",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({
+		idle = 30, walk = 30, run = 30, swim = 30, swim_boost = 30,
+	}),
+	capabilities = { walk = true, run = true, fly = false, swim = true, mount = true },
+	hitbox = { width = 0.95, height = 1.60 },
+	mesh_height = 10.79,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 15, y = 100, z = 20 }, -- calibrado in-game /hashimon rot
+		eye_first = { x = 0, y = 18, z = 4 },
+		eye_third = { x = 0, y = 12, z = -5 },
 		hide_rider = false,
 		forced_visible = true,
 		rider_scale = 0.55,

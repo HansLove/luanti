@@ -17,8 +17,9 @@ end
 local path = core.get_modpath("hashimon_wolkers")
 dofile(path .. "/appearance.lua")
 dofile(path .. "/entity.lua")
+dofile(path .. "/hearth.lua")
 dofile(path .. "/brain.lua")
 dofile(path .. "/sync.lua")
 dofile(path .. "/commands.lua")
 
-core.log("action", "[hashimon_wolkers] listo — 3 cuerpos, FSM local, consejo del servidor.")
+core.log("action", "[hashimon_wolkers] listo — 3 cuerpos, Hogar, FSM local, consejo del servidor.")

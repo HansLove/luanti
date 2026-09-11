@@ -25,6 +25,16 @@
 --     dig             561     30 frames   no  (hold Sprint/aux1 excavando en montura tierra;
 --                                              p.ej. Road tierra — NO es run_boost)
 --
+-- CHAT / COMPAÑERO (web) — slots FUTUROS, aún no obligatorios en Luanti.
+-- Cuando existan en el GLB, el chat web los busca por nombre exacto.
+-- Hasta entonces el navegador usa overlays procedurales.
+--
+--     look            601     30 frames   no  (alzar cabeza / orejas)
+--     hop             641     30 frames   no  (saltitos hacia el jugador)
+--     spin            681     30 frames   no  (dar vueltas con energía)
+--     sit             721     30 frames   no  (sentarse / agacharse)
+--     nuzzle          761     30 frames   no  (acercarse y frotarse)
+--
 -- Brief animador aéreo: fly_rocket = alas plegadas / cuerpo vertical arriba;
 -- fly_dive = nose-down, alas retraídas. Si el GLB no tiene el clip, no lo
 -- declares en bodies — el FSM degrada a fly_boost → fly.
@@ -95,6 +105,12 @@ hashimon_bodies.ANIM_START = {
 	perch_back = 481,
 	swim_boost = 521,
 	dig = 561,
+	-- Chat companion reactions (optional; web falls back to procedural motion).
+	look = 601,
+	hop = 641,
+	spin = 681,
+	sit = 721,
+	nuzzle = 761,
 }
 
 hashimon_bodies.ANIM_BUDGET = 30
@@ -109,6 +125,7 @@ local ORDER = {
 	"fly_boost", "fly_rocket", "fly_dive", "run_boost",
 	"perch_neck", "perch_head", "perch_shoulder", "perch_back",
 	"swim_boost", "dig",
+	"look", "hop", "spin", "sit", "nuzzle",
 }
 
 --- Tabla `animations` a partir de la LONGITUD de cada clip.

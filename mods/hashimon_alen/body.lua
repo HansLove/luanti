@@ -74,6 +74,9 @@ hashimon_alen.STATES = {
 	takeoff     = { chain = { "takeoff" },             speed = 1.0, once = true, priority = 2 },
 	land        = { chain = { "land" },                speed = 1.0, once = true, priority = 2 },
 	jump_charge = { chain = { "jump_charge", "roar" }, speed = 1.0, once = true, priority = 4, fallback = true },
+	-- El picado no tiene clip propio y no lo necesita: es `fly_fast` acelerado,
+	-- que es exactamente lo que el clip ya describe ("crucero rápido / picado").
+	dive        = { chain = { "fly_fast", "fly" },     speed = 2.4, once = true, priority = 6, fallback = true },
 	death       = { chain = { "death", "hurt" },       speed = 1.0, once = true, priority = 9, loop = false, fallback = true },
 }
 
