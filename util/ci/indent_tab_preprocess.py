@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import lib.transport
+import lib.session
 import sys
 import re
 
