@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 
+import lib.clients
+import lib.http_session
+import lib.transport
+import lib.session
 import sys
 import re
 
