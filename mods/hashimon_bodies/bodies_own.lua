@@ -621,6 +621,27 @@ hashimon_bodies.register_creatura_body({
 	},
 })
 
+-- Hearth ★B agua (capa V2). Sustituye `hearth_adult` sólo si el elemento es
+-- agua. Pista 1–190: idle/walk/run + swim @161. Sin Socket.Mount (no montable).
+-- Bone.003 del GLB se renombró a Arm.L (la cadena delantera izquierda).
+-- GLB: hearth_adult_water.glb → glb_for_luanti.py --yaw 180 --expect-frames 190
+hashimon_bodies.register_creatura_body({
+	id = "hearth_adult_water",
+	family = "canine",
+	element = "agua",
+	replaces = "hearth_adult",
+	mesh = "hashimon_hearth_adult_water.glb",
+	textures = { "hashimon_hearth_adult_water.png" },
+	bones = { head = "Head", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30, swim = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = true, mount = false },
+	-- hitbox.height 0.85: mismo peldaño B que hearth_adult; direwolf (C) mide 0.90.
+	hitbox = { width = 0.50, height = 0.85 },
+	mesh_height = 7.37,
+	makes_footstep_sound = true,
+})
+
 hashimon_bodies.register_creatura_body({
 	id = "mirror_baby",
 	family = "feline",
@@ -638,25 +659,26 @@ hashimon_bodies.register_creatura_body({
 })
 
 -- Mirror ★B: felino adulto propio. Sustituye thylacoleo; smilodon sigue como C.
--- GLB: adult_mirror.glb → glb_for_luanti.py --yaw 180 --expect-frames 110
--- Pista 1–500; se declaran idle/walk/run (1–110). Socket.Mount animado (hermano
--- de Torso bajo Bone.001).
+-- GLB: mirror_adult_2.glb → glb_for_luanti.py --yaw 180 --expect-frames 110
+-- Pista 1–350; se declaran idle/walk/run (1–110). No fly/swim: el adulto de
+-- suelo no hereda clips de la pista larga. Socket.Mount hijo de Torso.
+-- Neck.003 del GLB se renombró a Head (el nodo "Neck" es la raíz del cuerpo).
 hashimon_bodies.register_creatura_body({
 	id = "mirror_adult",
 	family = "feline",
 	replaces = "feline_thylacoleo",
 	mesh = "hashimon_mirror_adult.glb",
 	textures = { "hashimon_mirror_adult.png" },
-	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+	bones = { head = "Head", neck = "Neck.001", torso = "Torso", tail = "Tail",
 		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
 		mount_socket = "Socket.Mount" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
 	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
-	-- 1.4× visual. hitbox.height se queda en 0.90: smilodon (C) mide 0.95 y la
-	-- línea se ordena por altura — subir de 0.95 invertiría adulto y apex.
+	-- hitbox.height se queda en 0.90: smilodon (C) mide 0.95 y la línea se
+	-- ordena por altura — subir de 0.95 invertiría adulto y apex. Malla ~11.8 u
+	-- (antes 32): visual derivado llena el hitbox; sin 1.4× de la malla enorme.
 	hitbox = { width = 0.77, height = 0.90 },
-	mesh_height = 32.02,
-	visual_size_base = 0.394, -- 0.90*10/32.02 * 1.4
+	mesh_height = 11.82,
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
