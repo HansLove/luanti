@@ -138,8 +138,8 @@ core.register_on_joinplayer(function(player, _last_login)
 end)
 
 core.register_chatcommand("hashimon", {
-	params = "<sync|status|login|file|logout|starter|session|attack|media|dna|evolve|ritualkit|carry|avatar|mount|mount_element|eyes|eyes3|seat|rot|yeet|worldpath>",
-	description = "Hashimon: sync, evolve, carry, avatar bob, mount, yeet, …",
+	params = "<sync|status|login|file|logout|starter|session|attack|fire|guard|media|dna|evolve|ritualkit|carry|avatar|mount|mount_element|eyes|eyes3|seat|rot|yeet|worldpath>",
+	description = "Hashimon: sync, evolve, carry, avatar bob, mount, fire, guard, yeet, …",
 	func = function(name, param)
 		local player = core.get_player_by_name(name)
 		if not player then
@@ -581,6 +581,20 @@ core.register_chatcommand("hashimon", {
 			return hashimon.impact_yeet_command(name, rest)
 		end
 
+		if cmd == "guard" then
+			if not hashimon.guard_command then
+				return false, "hashimon_entities mod not loaded."
+			end
+			return hashimon.guard_command(name, rest)
+		end
+
+		if cmd == "fire" then
+			if not hashimon.cube_fire_command then
+				return false, "hashimon_entities mod not loaded."
+			end
+			return hashimon.cube_fire_command(name)
+		end
+
 		if cmd == "attack" then
 			if not hashimon.attack_nearest_roster then
 				return false, "hashimon_entities mod not loaded."
@@ -620,6 +634,6 @@ core.register_chatcommand("hashimon", {
 			return true, "Blast orb launched."
 		end
 
-		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack, evolve, carry, avatar, ritualkit, mount, mount_element, yeet"
+		return false, "Unknown subcommand. Use: sync, status, login, file, logout, starter, session, attack, fire, guard, evolve, carry, avatar, ritualkit, mount, mount_element, yeet"
 	end,
 })

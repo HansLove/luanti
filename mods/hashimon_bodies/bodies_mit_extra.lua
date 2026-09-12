@@ -137,6 +137,8 @@ R({
 R({
 	id = "aquatic_dolphin",
 	family = "aquatic",
+	-- Grafo V1: sale a Natural — Depth A es depth_baby, no el delfín MIT.
+	natural_only = true,
 	mesh = "Dolphin.b3d",
 	textures = { "texturedolphin.png", "adolphin.png" },
 	visual_size_base = 1.0,
@@ -151,6 +153,8 @@ R({
 R({
 	id = "aquatic_octopus",
 	family = "aquatic",
+	-- Grafo V1: sale a Natural — no escalón Genesis de Depth.
+	natural_only = true,
 	mesh = "Octopus.b3d",
 	textures = { "textureoctopus.png", "aoctopus.png", "marinaramobs_octopusink.png", "marinaramobs_octopus_raw.png", "marinaramobs_octopus_cooked.png" },
 	visual_size_base = 0.5,
@@ -165,6 +169,7 @@ R({
 R({
 	id = "aquatic_jellyfish",
 	family = "aquatic",
+	natural_only = true,
 	mesh = "Jellyfish.b3d",
 	textures = { "texturejellyfish.png", "ajellyfish.png" },
 	visual_size_base = 4.0,
@@ -179,6 +184,7 @@ R({
 R({
 	id = "aquatic_parrotfish",
 	family = "aquatic",
+	natural_only = true,
 	mesh = "Parrotfish.b3d",
 	textures = { "textureparrotfish.png", "aparrotfish.png", "marinaramobs_exotic_fish_raw.png", "marinaramobs_exotic_fish_cooked.png" },
 	visual_size_base = 1.0,
@@ -193,6 +199,7 @@ R({
 R({
 	id = "aquatic_nautilus",
 	family = "aquatic",
+	natural_only = true,
 	mesh = "Nautilus.b3d",
 	textures = { "texturenautilus.png", "anautilus.png", "marinaramobs_nautilusshell.png" },
 	visual_size_base = 2.0,

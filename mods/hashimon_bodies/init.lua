@@ -14,6 +14,7 @@ dofile(modpath .. "/anim_fsm.lua")
 dofile(modpath .. "/attachments.lua")
 dofile(modpath .. "/proportions.lua")
 dofile(modpath .. "/follow.lua")
+dofile(modpath .. "/guard.lua")
 dofile(modpath .. "/mobs/common.lua")
 dofile(modpath .. "/spawn.lua")
 
@@ -84,6 +85,8 @@ hashimon_bodies.register_creatura_body({
 	id = "canine_fox",
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail" },
 	family = "canine",
+	-- Grafo V1: piel alternativa de Hearth A — no escalón (A es hearth_baby).
+	natural_only = true,
 	mesh = "animalia_fox.b3d",
 	textures = { "animalia_fox_1.png" },
 	visual_size_base = 9,

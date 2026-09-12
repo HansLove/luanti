@@ -51,10 +51,14 @@ function hashimon_bodies.apply_morphology(self, creature, morph)
 	self.object:set_properties({
 		visual_size = morph.visual_size,
 	})
-	self.object:set_nametag_attributes({
-		text = hashimon.nametag_for_creature(creature),
-		color = "#E0E7FF",
-	})
+	if hashimon.apply_creature_label then
+		hashimon.apply_creature_label(self.object, creature)
+	else
+		self.object:set_nametag_attributes({ text = "" })
+		self.object:set_properties({
+			infotext = hashimon.nametag_for_creature(creature),
+		})
+	end
 
 	-- Clear first: bone scale is multiplicative against the animation, so
 	-- re-applying without clearing would compound on every respawn/resync.
@@ -183,6 +187,8 @@ function hashimon_bodies.register_creatura_body(body_def)
 		utility_stack = {
 			animalia.mob_ai.tamed_stay,
 			hashimon_bodies.mob_ai_follow_owner,
+			-- Defend the owner (score 0.8): outranks stay and follow.
+			hashimon_bodies.mob_ai_guard_owner,
 		},
 
 		activate_func = hashimon_bodies.make_activate(body_def),
@@ -220,6 +226,10 @@ function hashimon_bodies.register_creatura_body(body_def)
 		end,
 
 		on_punch = function(self, puncher)
+			-- Provided by hashimon_entities/defense.lua when loaded.
+			if hashimon.guard_react_to_punch then
+				hashimon.guard_react_to_punch(self, puncher)
+			end
 			if not puncher or not puncher:is_player() then
 				return
 			end

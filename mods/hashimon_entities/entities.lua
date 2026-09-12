@@ -193,14 +193,29 @@ function hashimon.nametag_for_creature(creature)
 	return name .. " ★" .. tostring(stage)
 end
 
+--- Nombre y ★ no flotan sobre la malla: van en `infotext` (HUD al apuntar) y
+--- en el clic (`send_creature_stats`). El nametag vacío quita la etiqueta.
+function hashimon.apply_creature_label(obj, creature)
+	if not obj then
+		return
+	end
+	obj:set_nametag_attributes({ text = "" })
+	obj:set_properties({
+		infotext = creature and hashimon.nametag_for_creature(creature) or "",
+	})
+end
+
 function hashimon.send_creature_stats(player_name, creature)
 	if not creature then
 		return
 	end
 	local bits = (creature.pow and creature.pow.bestShareBits) or creature.bits or 0
+	local stage = hashimon.creature_stage and hashimon.creature_stage(creature)
+		or (creature.stars or creature.stage or creature.tier or 1)
 	core.chat_send_player(player_name, string.format(
-		"[Hashimon] %s — species: %s, DNA: %s..., bits: %d",
+		"[Hashimon] %s ★%d — species: %s, DNA: %s..., bits: %d",
 		creature.name or creature.speciesKey or "?",
+		stage,
 		creature.speciesKey or "?",
 		(creature.dna or "????"):sub(1, 8),
 		bits
@@ -231,10 +246,7 @@ function hashimon.apply_companion_visuals(self, creature)
 	self.object:set_properties({
 		visual_size = hashimon.companion_visual_size(creature),
 	})
-	self.object:set_nametag_attributes({
-		text = hashimon.nametag_for_creature(creature),
-		color = "#E0E7FF",
-	})
+	hashimon.apply_creature_label(self.object, creature)
 end
 
 local function spawn_center_for(player_name)
@@ -422,6 +434,10 @@ core.register_entity("hashimon_entities:creature", {
 			hashimon.step_mounted(self, dtime)
 			return
 		end
+		-- Defending the owner outranks following them.
+		if hashimon.step_guard and hashimon.step_guard(self, dtime) then
+			return
+		end
 		hashimon.step_follow_owner(self)
 	end,
 
@@ -450,13 +466,13 @@ core.register_entity("hashimon_entities:creature", {
 			})
 		end
 
-		self.object:set_nametag_attributes({
-			text = hashimon.nametag_for_creature(creature),
-			color = "#E0E7FF",
-		})
+		hashimon.apply_creature_label(self.object, creature)
 	end,
 
 	on_punch = function(self, puncher)
+		if hashimon.guard_react_to_punch then
+			hashimon.guard_react_to_punch(self, puncher)
+		end
 		if not puncher or not puncher:is_player() then
 			return
 		end

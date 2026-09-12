@@ -205,6 +205,8 @@ R({
 R({
 	id = "canine_badger",
 	family = "canine",
+	-- Grafo V1: piel alternativa de Hearth A — no escalón Genesis.
+	natural_only = true,
 	mesh = "badger.b3d",
 	textures = { "dmobs_badger.png", "mobs_blood.png", "default_obsidian.png" },
 	visual_size_base = 2.0,

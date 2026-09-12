@@ -137,9 +137,9 @@ hashimon_bodies.register_creatura_body({
 	makes_footstep_sound = true,
 })
 
--- Guardian ★B genérico (fuego/agua/tierra/eléctrico). Sustituye al oso MIT
--- (`ursine_bear`). Aire usa `guardian_adult_air` (replaces). Pista 1–110:
--- idle/walk/run. Socket.Mount hijo de Torso.
+-- Guardian ★B genérico (fuego/tierra/eléctrico). Sustituye al oso MIT
+-- (`ursine_bear`). Aire usa `guardian_adult_air`; agua usa `guardian_adult_water`.
+-- Pista 1–110: idle/walk/run. Socket.Mount hijo de Torso.
 -- GLB: adult_guardian.glb → glb_for_luanti.py --yaw 180 --expect-frames 110
 hashimon_bodies.register_creatura_body({
 	id = "guardian_adult",
@@ -156,6 +156,38 @@ hashimon_bodies.register_creatura_body({
 	-- Blender; el tamaño EN JUEGO lo fija hitbox, no la malla.
 	hitbox = { width = 0.77, height = 1.40 },
 	mesh_height = 19.13,
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 20, z = 4 },
+		eye_third = { x = 0, y = 14, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
+})
+
+-- Guardian ★B agua (capa V2). Sustituye `guardian_adult` sólo si el elemento
+-- es agua. Pista 1–190: idle/walk/run + swim @161. Sin swim_boost (no llega a
+-- 521). Socket.Mount hijo de Torso, animado.
+-- GLB: guardian_adult_water.glb → glb_for_luanti.py --yaw 180 --expect-frames 190
+hashimon_bodies.register_creatura_body({
+	id = "guardian_adult_water",
+	family = "ursine",
+	element = "agua",
+	replaces = "guardian_adult",
+	mesh = "hashimon_guardian_adult_water.glb",
+	textures = { "hashimon_guardian_adult_water.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30, swim = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = true, mount = true },
+	hitbox = { width = 0.77, height = 1.40 },
+	mesh_height = 9.00,
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
@@ -364,17 +396,18 @@ hashimon_bodies.register_creatura_body({
 })
 
 -- Key ★B genérico (fuego/aire/tierra/eléctrico): cobra terrestre.
--- Agua usa `key_adult_water` (replaces). Pista hasta 70 → idle/walk.
+-- Agua usa `key_adult_water` (replaces). Pista 1–110: idle/walk/run.
+-- GLB: key_adult.glb → glb_for_luanti.py --yaw 180 --expect-frames 110
 hashimon_bodies.register_creatura_body({
 	id = "key_adult",
 	family = "serpentine",
 	mesh = "hashimon_key_adult.glb",
 	textures = { "hashimon_key_adult.png" },
 	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail" },
-	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
-	capabilities = { walk = true, run = false, fly = false, swim = false, mount = false },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = false },
 	hitbox = { width = 0.70, height = 1.20 },
-	mesh_height = 13.22,
+	mesh_height = 11.93,
 	makes_footstep_sound = false,
 })
 
@@ -443,8 +476,10 @@ hashimon_bodies.register_creatura_body({
 		mount_socket = "Socket.Mount" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
 	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	-- 1.4× visual. hitbox.height se queda en 1.10 (peldaño B).
 	hitbox = { width = 0.85, height = 1.10 },
 	mesh_height = 5.82,
+	visual_size_base = 2.646, -- 1.10*10/5.82 * 1.4
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
@@ -552,6 +587,40 @@ hashimon_bodies.register_creatura_body({
 	makes_footstep_sound = true,
 })
 
+-- Hearth ★B: cánido adulto propio. Sustituye al lobo MIT (`canine_wolf`).
+-- Pista 1–500; se declaran idle/walk/run (1–110). Socket.Mount animado
+-- (hermano de Torso bajo Root). hitbox.height 0.85: direwolf (C) mide 0.90.
+-- GLB: hearth_adult.glb → glb_for_luanti.py --yaw 180 --expect-frames 110
+hashimon_bodies.register_creatura_body({
+	id = "hearth_adult",
+	family = "canine",
+	replaces = "canine_wolf",
+	mesh = "hashimon_hearth_adult.glb",
+	textures = { "hashimon_hearth_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = false, mount = true },
+	-- 1.4× visual. mesh ~31 u; sin el factor se lee como cría. hitbox 0.85
+	-- queda bajo el direwolf (0.90).
+	hitbox = { width = 0.50, height = 0.85 },
+	mesh_height = 31.27,
+	visual_size_base = 0.381, -- 0.85*10/31.27 * 1.4
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 16, z = 3 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.5,
+		suggest_camera = "third",
+	},
+})
+
 hashimon_bodies.register_creatura_body({
 	id = "mirror_baby",
 	family = "feline",
@@ -588,6 +657,44 @@ hashimon_bodies.register_creatura_body({
 	hitbox = { width = 0.77, height = 0.90 },
 	mesh_height = 32.02,
 	visual_size_base = 0.394, -- 0.90*10/32.02 * 1.4
+	makes_footstep_sound = true,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 16, z = 3 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.5,
+		suggest_camera = "third",
+	},
+})
+
+-- Mirror ★B aire (capa V2). Sustituye `mirror_adult` sólo si el elemento es
+-- aire. Pista 1–310: idle/walk + fly/fly_boost/fly_rocket/fly_dive. Socket.Mount
+-- animado (hermano de Torso bajo Root). hitbox.height = 0.90: smilodon (C) mide
+-- 0.95 y la línea se ordena por altura.
+-- GLB: mirror_adult_air.glb → glb_for_luanti.py --yaw 180 --expect-frames 310
+hashimon_bodies.register_creatura_body({
+	id = "mirror_adult_air",
+	family = "feline",
+	element = "aire",
+	replaces = "mirror_adult",
+	mesh = "hashimon_mirror_adult_air.glb",
+	textures = { "hashimon_mirror_adult_air.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({
+		idle = 30, walk = 30, fly = 30, fly_boost = 30,
+		fly_rocket = 30, fly_dive = 30,
+	}),
+	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
+	-- 1.3× previo × 1.4 = 1.82× del derivado. hitbox.height se queda en 0.90.
+	hitbox = { width = 0.77, height = 0.90 },
+	mesh_height = 14.92,
+	visual_size_base = 1.098, -- 0.784 * 1.4
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",
@@ -707,9 +814,43 @@ hashimon_bodies.register_creatura_body({
 		arm_l = "Arm.L", arm_r = "Arm.R", fin_t = "Fin.T" },
 	animations = hashimon_bodies.anims({ idle = 30, walk = 30 }),
 	capabilities = { walk = true, run = false, fly = false, swim = true, mount = false },
+	-- 1.3× visual. hitbox.height 0.55 = tier 1 (stage 1). El GLB tenía el
+	-- origen en el centro (AABB y[-2.01, 2.01]); LuantiFacing lo sube al suelo.
 	hitbox = { width = 0.38, height = 0.55 },
 	mesh_height = 4.02,
+	visual_size_base = 1.778, -- 0.55*10/4.02 * 1.3
 	makes_footstep_sound = false,
+})
+
+-- Depth ★B: leviatán propio. Sustituye al dunkleosteus GPL (sin `stand`).
+-- Pista 1–190: idle/walk/run + swim @161. Socket.Mount hijo de Torso.
+-- GLB: depth_adult.glb → glb_for_luanti.py --yaw 180 --expect-frames 190
+hashimon_bodies.register_creatura_body({
+	id = "depth_adult",
+	family = "aquatic",
+	replaces = "marine_reptile_dunkleosteus",
+	mesh = "hashimon_depth_adult.glb",
+	textures = { "hashimon_depth_adult.png" },
+	bones = { head = "Head", neck = "Neck", torso = "Torso", tail = "Tail",
+		arm_l = "Arm.L", arm_r = "Arm.R", leg_l = "Leg.L", leg_r = "Leg.R",
+		fin_t = "Top.Fin",
+		mount_socket = "Socket.Mount" },
+	animations = hashimon_bodies.anims({ idle = 30, walk = 30, run = 30, swim = 30 }),
+	capabilities = { walk = true, run = true, fly = false, swim = true, mount = true },
+	hitbox = { width = 0.90, height = 1.30 },
+	mesh_height = 8.64,
+	makes_footstep_sound = false,
+	mount_view = {
+		bone = "Socket.Mount",
+		seat = { x = 0, y = 0, z = 0 },
+		rot = { x = 0, y = 180, z = 0 },
+		eye_first = { x = 0, y = 18, z = 4 },
+		eye_third = { x = 0, y = 12, z = -5 },
+		hide_rider = false,
+		forced_visible = true,
+		rider_scale = 0.55,
+		suggest_camera = "third",
+	},
 })
 
 -- ---------------------------------------------------------------------------
@@ -742,8 +883,10 @@ hashimon_bodies.register_creatura_body({
 		fly_rocket = 30, fly_dive = 30,
 	}),
 	capabilities = { walk = true, run = false, fly = true, swim = false, mount = true },
+	-- 1.4× visual. hitbox.height se queda en 1.00 (tier 2, por debajo del apex).
 	hitbox = { width = 0.55, height = 1.00 },
 	mesh_height = 11.12,
+	visual_size_base = 1.259, -- 1.00*10/11.12 * 1.4
 	makes_footstep_sound = true,
 	mount_view = {
 		bone = "Socket.Mount",

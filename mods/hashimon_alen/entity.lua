@@ -154,10 +154,9 @@ core.register_entity(hashimon_alen.ENTITY, {
 			and { x = 0, y = -9.8, z = 0 } or { x = 0, y = 0, z = 0 })
 		self._landing = s.grounded and true or false
 		self.object:set_yaw(s.yaw or 0)
-		self.object:set_nametag_attributes({
-			text = "Alen Gregory",
-			color = "#F97316",
-		})
+		-- Sin etiqueta flotante: el nombre en el chat de voz basta; sobre la
+		-- malla le quita presencia de villano.
+		self.object:set_nametag_attributes({ text = "" })
 		hashimon_alen.set_anim(self, "hover", 0)
 		hashimon_alen.play_oneshot(self, "takeoff")
 		core.log("action", "[alen] entidad instanciada")

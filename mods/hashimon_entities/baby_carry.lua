@@ -440,8 +440,12 @@ local function restore_entity_props(obj, ent, saved)
 	if next(patch) then
 		obj:set_properties(patch)
 	end
-	if saved.nametag and saved.nametag.text then
-		obj:set_nametag_attributes(saved.nametag)
+	local creature = ent and (ent.hashimon_creature or ent.creature)
+	if hashimon.apply_creature_label and creature then
+		hashimon.apply_creature_label(obj, creature)
+	elseif saved.infotext then
+		obj:set_nametag_attributes({ text = "" })
+		obj:set_properties({ infotext = saved.infotext })
 	end
 	if ent then
 		ent.carried_by = nil
@@ -470,6 +474,7 @@ local function apply_carry_attach(player, obj, ent, slot, attach_target)
 		})
 	end
 	obj:set_nametag_attributes({ text = "" })
+	obj:set_properties({ infotext = "" })
 
 	ent.carried_by = player:get_player_name()
 	ent._carry_anim_set = nil
@@ -668,7 +673,7 @@ function hashimon.carry(player, obj, slot_id)
 			visual_size = props and props.visual_size,
 			collisionbox = props and props.collisionbox,
 			physical = props and props.physical,
-			nametag = obj:get_nametag_attributes(),
+			infotext = props and props.infotext,
 		}
 	end
 

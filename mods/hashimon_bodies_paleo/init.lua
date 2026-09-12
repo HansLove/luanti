@@ -245,6 +245,9 @@ R({
 R({
 	id = "marine_reptile_plesiosaurus",
 	family = "marine_reptile",
+	-- Grafo V1: B alternativo de Aire, no escalón. Sin esto se cuela entre
+	-- depth_baby (0.55) y depth_adult (1.30).
+	natural_only = true,
 	mesh = "paleotest_plesiosaurus.b3d",
 	textures = { "paleotest_plesiosaurus_female.png", "paleotest_plesiosaurus_male.png" },
 	visual_size_base = 10.0,

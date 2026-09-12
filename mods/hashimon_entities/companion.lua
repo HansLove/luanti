@@ -77,6 +77,8 @@ creatura.register_mob("hashimon_entities:companion", {
 		animalia.mob_ai.tamed_stay,
 		(hashimon_bodies and hashimon_bodies.mob_ai_follow_owner)
 			or animalia.mob_ai.tamed_follow_owner,
+		-- Defend the owner (score 0.8) when hashimon_bodies/guard.lua is loaded.
+		hashimon_bodies and hashimon_bodies.mob_ai_guard_owner or nil,
 	},
 
 	activate_func = function(self)
@@ -149,6 +151,9 @@ creatura.register_mob("hashimon_entities:companion", {
 	end,
 
 	on_punch = function(self, puncher, _time_from_last_punch, _tool_capabilities, _direction, _damage)
+		if hashimon.guard_react_to_punch then
+			hashimon.guard_react_to_punch(self, puncher)
+		end
 		if not puncher or not puncher:is_player() then
 			return
 		end

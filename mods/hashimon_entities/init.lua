@@ -8,6 +8,8 @@ dofile(modpath .. "/voxel_body.lua")
 dofile(modpath .. "/attack.lua")
 dofile(modpath .. "/impact_flight.lua")
 dofile(modpath .. "/arc_bolt.lua")
+dofile(modpath .. "/element_cube.lua")
+dofile(modpath .. "/defense.lua")
 dofile(modpath .. "/evolve_ritual.lua")
 
 -- Dev-only POC for our own animated GLB (/htest). Additive and self-contained —

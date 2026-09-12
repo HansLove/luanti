@@ -112,3 +112,78 @@ Bob carry slots use **rot.y = 180** so baby faces with Bob (`/hashimon carry rot
 
 Enable **hashimon_players** in Content so join replaces Sam with Bob.
 
+
+## Defensa del dueño + cubo elemental
+
+Dos piezas nuevas, un mismo modelo de agro:
+[`defense.lua`](defense.lua) (comportamiento) y
+[`element_cube.lua`](element_cube.lua) (proyectil).
+
+### Defensa (estilo lobo de Minecraft)
+
+Cuando al dueño **le pegan**, todos sus Hashimons spawneados toman al agresor
+como objetivo durante `GUARD.memory` segundos: dejan de seguir, se acercan,
+muerden a corta distancia y —si ya crecieron— lanzan cubos elementales desde
+lejos. También agro al golpear directamente a un Hashimon, y *ofensivo*: a
+quien golpea su dueño, lo golpea la manada.
+
+Sueltan el objetivo cuando muere, sale del radio de agro, o la correa al dueño
+se estira demasiado (los guardianes vuelven a casa, no se van de viaje).
+
+Funciona en las cuatro capas de render: sprite y cuerpo voxel usan
+`hashimon.step_guard` (velocidad directa); los cuerpos de morfología Creatura
+guardan por utilidad con sus animaciones reales de walk/run/melee —
+[`hashimon_bodies/guard.lua`](../hashimon_bodies/guard.lua), score **0.8**, por
+encima de `tamed_stay` (0.5) y `follow_owner` (0.4): un Hashimon al que mandas
+quedarse quieto defiende igual.
+
+```
+/hashimon guard            # estado
+/hashimon guard off        # tus Hashimons quedan pasivos
+/hashimon guard on         # vuelven a defender (default)
+/hashimon guard server off # apaga la defensa en todo el servidor (priv server)
+```
+
+**Límite conocido:** el agro ofensivo sólo se dispara cuando el dueño golpea a
+un **jugador** u otro Hashimon. Luanti no tiene callback global de golpe a
+entidad, así que golpear a un mob cualquiera no llama a la manada.
+
+### Cubo elemental (montado)
+
+Montado, **clic izquierdo** lanza un cubo del elemento de la montura, con
+enfriamiento `hashimon.CUBE_COOLDOWN` (1.2s). `/hashimon fire` hace lo mismo, y
+sin montura lo lanza el Hashimon más cercano.
+
+No es el `blast_orb` de [`attack.lua`](attack.lua): ése llama a `tnt.boom` y se
+come el terreno. El cubo **sólo hace daño** — nunca toca un nodo, así que se
+puede disparar dentro del pueblo.
+
+| Elemento | Color | Opacidad | Daño base | Velocidad | Efecto extra |
+|----------|-------|----------|-----------|-----------|--------------|
+| fuego | `#F97316` | opaco | 6 | 22 | quema 3 ticks (2 dmg) |
+| agua | `#3B82F6` | translúcido (140) | 4 | 24 | empuje fuerte + lento 0.72 / 2.5s |
+| hielo | `#BAE6FD` | translúcido (170) | 5 | 26 | lento 0.45 / 3s |
+| tierra | `#92400E` | opaco | 7 | 16 | — |
+| eléctrico | `#EAB308` | 205 | 5 | 30 | aturde (0.3) 1.2s |
+| aire | `#67E8F9` | translúcido (110) | 3 | 28 | empuje 11 + elevación |
+| resto (pixel, onda, astro…) | color del tipo | 205 | 4 | 22 | — |
+
+Daño escalado por ★ (×1 → ×2.4 como techo). Los efectos de lento/aturdir sólo
+se aplican a **jugadores** (vía `physics_override`) y se omiten si la víctima va
+montada, para no pelear con la física de la montura.
+
+### Tunables (`hashimon.GUARD.*`)
+
+| Constante | Default | Rol |
+|-----------|---------|-----|
+| `memory` | 12 | Segundos que el guardián recuerda al objetivo |
+| `aggro_radius` | 20 | Distancia a la que suelta al objetivo |
+| `leash` | 26 | Distancia máxima al dueño antes de volver |
+| `melee_range` | 2.6 | Alcance del mordisco |
+| `melee_damage` | 4 | Daño base del mordisco (antes de ★) |
+| `melee_interval` | 1.0 | Segundos entre mordiscos |
+| `approach_speed` | 6.5 | Nodos/s al cerrar distancia |
+| `ranged_min_range` | 6 | Distancia mínima para lanzar cubos |
+| `ranged_cooldown` | 2.5 | Segundos entre cubos del guardián |
+| `ranged_stage_min` | 3 | ★ mínima para atacar a distancia |
+| `guard_stage_min` | 1 | ★ mínima para pelear (un huevo no pelea) |

@@ -420,7 +420,7 @@ function hashimon.start_evolve_ritual(player, target_stage)
 
 	local props = obj:get_properties()
 	ent._evolve_saved_visual = props and props.visual_size
-	obj:set_properties({ visual_size = { x = 0.001, y = 0.001 } })
+	obj:set_properties({ visual_size = { x = 0.001, y = 0.001 }, infotext = "" })
 	obj:set_nametag_attributes({ text = "" })
 
 	local core_obj = core.add_entity(

@@ -91,10 +91,17 @@ core.register_entity("hashimon_entities:voxel_root", {
 			return
 		end
 
+		if hashimon.step_guard and hashimon.step_guard(self, dtime) then
+			return
+		end
+
 		hashimon.step_follow_owner(self)
 	end,
 
 	on_punch = function(self, puncher)
+		if hashimon.guard_react_to_punch then
+			hashimon.guard_react_to_punch(self, puncher)
+		end
 		if not puncher or not puncher:is_player() then
 			return
 		end
@@ -288,10 +295,7 @@ function hashimon.spawn_voxel_creature(pos_world, creature, owner)
 		ent.size_mult = size_mult
 		ent.rideable = hashimon.is_rideable and hashimon.is_rideable(creature) or false
 	end
-	root:set_nametag_attributes({
-		text = hashimon.nametag_for_creature(creature),
-		color = "#E0E7FF",
-	})
+	hashimon.apply_creature_label(root, creature)
 
 	return root
 end

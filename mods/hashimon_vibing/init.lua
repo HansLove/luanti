@@ -93,20 +93,29 @@ end
 ------------------------------------------------------------------------
 core.register_node("hashimon_vibing:tower", {
 	description = "Torre de Vibing",
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{ -0.30, -0.5, -0.30, 0.30, 0.5, 0.30 },   -- shaft
-			{ -0.45, -0.5, -0.45, 0.45, -0.35, 0.45 }, -- base
-			{ -0.45, 0.35, -0.45, 0.45, 0.5, 0.45 },   -- crown
-		},
-	},
-	tiles = { "[fill:16x16:#5FE0FF" },
+	-- The 3D asset (Meshy "Arcane Energy Spire"), installed as mod media by
+	-- tools/install_model.py. Luanti renders glTF geometry directly but IGNORES the
+	-- glTF's embedded images, its metallic/roughness map and its normal map — so the
+	-- surface comes from the extracted base-color texture, and backface_culling=false
+	-- covers the model's doubleSided thin geometry.
+	drawtype = "mesh",
+	mesh = "hashimon_vibing_spire.glb",
+	tiles = { { name = "hashimon_vibing_spire.jpg", backface_culling = false } },
+	-- glTF scale in Luanti is 10 mesh units = 1 node; the model is 1.0 unit tall, so
+	-- visual_scale ~18 makes it ~1.8 nodes. The origin is centered, so the base roots a
+	-- little into the ground — fitting for an energy-tap derrick. visual_scale (and how
+	-- deep it roots) are the by-eye values: tune them in-client, no restart needed for
+	-- this property.
+	visual_scale = 18,
 	use_texture_alpha = "opaque",
 	light_source = 13,
 	paramtype = "light",
+	sunlight_propagates = true,
 	is_ground_content = false,
+	-- A one-node footprint; the tall spire mesh rises out of it. Custom boxes because a
+	-- mesh node has no node_box to fall back on.
+	selection_box = { type = "fixed", fixed = { -0.4, -0.5, -0.4, 0.4, 1.5, 0.4 } },
+	collision_box = { type = "fixed", fixed = { -0.4, -0.5, -0.4, 0.4, 1.5, 0.4 } },
 	groups = { cracky = 2, oddly_breakable_by_hand = 2 },
 
 	on_place = function(itemstack, placer, pointed)
