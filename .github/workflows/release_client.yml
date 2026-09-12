@@ -88,20 +88,37 @@ jobs:
       - name: Runtime test
         run: ./build/macos/luanti.app/Contents/MacOS/luanti --version
 
-      # Zipping the built .app preserves permissions on the contained files,
-      #   which the GitHub artifact pipeline would otherwise strip away.
-      - name: CPack
+      # Ad-hoc sign so Gatekeeper allows the app to run.
+      # Without a Developer ID certificate this is the minimum required;
+      # users will need to right-click → Open on first launch.
+      - name: Codesign (ad-hoc)
         run: |
-          cd build
-          rm -rf macos
-          cpack -G ZIP -B macos
+          codesign --force --deep -s - \
+            --entitlements misc/macos/entitlements/release.entitlements \
+            --options runtime \
+            build/macos/luanti.app
+          codesign --verify --deep --strict build/macos/luanti.app
+
+      - name: Package DMG
+        run: |
+          brew install --quiet create-dmg
           mkdir -p "$GITHUB_WORKSPACE/artifact"
-          cp -v macos/*.zip "$GITHUB_WORKSPACE/artifact/hashimon-client-macos-${arch}.zip"
+          create-dmg \
+            --volname "Luanti" \
+            --volicon "misc/luanti-icon.icns" \
+            --window-pos 200 120 \
+            --window-size 540 380 \
+            --icon-size 96 \
+            --icon "luanti.app" 160 180 \
+            --hide-extension "luanti.app" \
+            --app-drop-link 380 180 \
+            "$GITHUB_WORKSPACE/artifact/hashimon-client-macos-${arch}.dmg" \
+            "build/macos/"
 
       - uses: actions/upload-artifact@v7
         with:
           name: hashimon-client-macos-${{ matrix.arch }}
-          path: artifact/hashimon-client-macos-${{ matrix.arch }}.zip
+          path: artifact/hashimon-client-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   release:
@@ -120,8 +137,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mapfile -t files < <(find assets -type f)
-          # one launcher plus the two macOS builds; anything else means an artifact
-          #   was unpacked instead of coming back whole
+          # one Windows launcher plus the two macOS DMGs (arm64 + x86_64);
+          # anything else means an artifact was unpacked instead of coming back whole
           [ "${#files[@]}" -eq 3 ] || { printf 'expected 3 release assets, found %d:\n' "${#files[@]}"; printf '%s\n' "${files[@]}"; exit 1; }
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
