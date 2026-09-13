@@ -7,8 +7,17 @@ It only *reads* Towny and pushes a projection — it never edits Towny.
 
 ## The tower's 3D model — how the asset reaches Luanti (the deploy process)
 
-The tower renders a real 3D asset (a Meshy "Arcane Energy Spire") as a **mesh
-node**. The model and its texture live in this mod:
+> **Status: the 3D mesh is TEMPORARILY DISABLED.** The tower currently renders as a
+> lightweight nodebox. The Meshy "Arcane Energy Spire" `.glb` (6.4MB, with embedded
+> textures) is parked in `tools/asset/` — a directory Luanti does *not* ship as media —
+> so it no longer downloads to clients. Re-enable it only after (a) the target client's
+> OpenGL-context instability is resolved and (b) the glb is stripped of its embedded
+> textures so the media is light. To re-enable: run `tools/install_model.py tools/asset/…glb`
+> (recreates `models/`+`textures/`) and switch the node's `drawtype` back to `"mesh"`
+> (see the commented block in `init.lua`).
+
+When active, the tower renders a real 3D asset (a Meshy "Arcane Energy Spire") as a
+**mesh node**. The model and its texture live in this mod:
 
 ```
 models/hashimon_vibing_spire.glb     glTF geometry (Luanti reads this directly)
