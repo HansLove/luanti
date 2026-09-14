@@ -31,6 +31,12 @@ local function chat_message_func(name, message)
 		return false
 	end
 
+	-- Slash commands must reach builtin/game/chat.lua. Returning true here
+	-- (as we do for global chat) would swallow /town, /border, etc.
+	if type(message) == "string" and message:sub(1, 1) == "/" then
+		return false
+	end
+
 	local res = towny.residents[name]
 
 	if not res then

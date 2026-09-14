@@ -134,7 +134,7 @@ end
 core.register_chatcommand("border", {
 	params = "[on | off]",
 	description = "Show/hide glowing boundary walls: cyan = your town, red = neighbouring towns' frontiers.",
-	privs = { towny = true },
+	privs = {},
 	func = function(name, param)
 		param = (param or ""):gsub("%s+", ""):lower()
 		if param == "on" then

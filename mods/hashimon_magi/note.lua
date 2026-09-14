@@ -129,6 +129,25 @@ core.register_node(hashimon_magi.NOTE, {
 	groups = { cracky = 3, oddly_breakable_by_hand = 2, not_in_creative_inventory = 1 },
 	sounds = {},
 
+	-- Creative mode does not consume on place; MAGI is one unique note per stack.
+	on_place = function(itemstack, placer, pointed_thing)
+		if not pointed_thing or pointed_thing.type ~= "node" then
+			return itemstack
+		end
+		local pos = core.get_pointed_thing_position(pointed_thing, true)
+		if not pos then
+			return itemstack
+		end
+		local before = core.get_node(pos).name
+		local count_before = itemstack:get_count()
+		local leftover = core.item_place_node(itemstack, placer, pointed_thing)
+		local after = core.get_node(pos).name
+		if after == hashimon_magi.NOTE and after ~= before and leftover:get_count() >= count_before then
+			leftover:take_item(1)
+		end
+		return leftover
+	end,
+
 	-- Carried -> placed. The token moves to node meta; the custody check that follows
 	-- writes the rotated nonce straight back to the node.
 	after_place_node = function(pos, placer, itemstack)

@@ -341,6 +341,12 @@ end
 -- --------------------------------------------------------------------------
 
 local function on_chat_body(name, message)
+	-- Comandos (/town, /border, …) no son charla. No trazarlos ni tratarlos
+	-- como mensaje a Alen: el motor los despacha más abajo en la cadena.
+	if type(message) == "string" and message:sub(1, 1) == "/" then
+		return
+	end
+
 	-- Traza lo PRIMERO de todo. Antes había cuatro retornos silenciosos por
 	-- delante y "no pasa nada" era indistinguible de "el handler ni se llamó".
 	trace(name, message, "recibido")

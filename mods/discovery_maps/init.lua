@@ -1599,7 +1599,8 @@ minetest.register_chatcommand("map", {
 
 -- After mods load, push any tiles already on disk (backfill for tiles generated
 -- before the API hook existed). Staggered inside sync_all_tiles_to_api.
-minetest.after(8, function()
+-- Delayed so join + /town are not competing with hundreds of HTTP posts.
+minetest.after(60, function()
 	local n = persistent_map.sync_all_tiles_to_api()
 	if n > 0 then
 		minetest.log("action", "[discovery_maps] syncweb backfill queued " .. n .. " tiles")
