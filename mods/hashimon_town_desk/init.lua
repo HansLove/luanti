@@ -10,18 +10,22 @@ end
 dofile(core.get_modpath(core.get_current_modname()) .. "/desk.lua")
 
 -- Original Towny handlers (must capture BEFORE we re-register).
+-- override_chatcommand mutates the same def table in place, so keep a local
+-- copy of .func — otherwise orig_town.func becomes this wrapper and /town
+-- recurses until stack overflow.
 local orig_town = core.registered_chatcommands["town"]
 local orig_resident = core.registered_chatcommands["resident"]
+local orig_town_func = orig_town and orig_town.func
+local orig_resident_func = orig_resident and orig_resident.func
 
-if not orig_town or not orig_town.func then
+if not orig_town_func then
 	core.log("error", "[hashimon_town_desk] /town not registered yet — load order broken.")
 	return
 end
 
--- desk.lua calls registered_chatcommands["town"] for found/invite/etc.
--- Point those at the ORIGINAL so we never recurse into this wrapper.
-towny.desk._orig_town = orig_town.func
-towny.desk._orig_resident = orig_resident and orig_resident.func
+-- desk.lua calls these for found/invite/etc. Never point at the wrapper.
+towny.desk._orig_town = orig_town_func
+towny.desk._orig_resident = orig_resident_func
 
 local function is_officer(res)
 	return res and res.has_flag
@@ -38,10 +42,11 @@ local function trim(s)
 end
 
 -- Wrap /town: empty → desk; gate invite/set mayor/rank mayor; else stock.
+-- Founding is a player right: do not require the `towny` privilege.
 core.override_chatcommand("town", {
 	params = "(sin args = Escritorio) || " .. (orig_town.params or ""),
 	description = "Escritorio del pueblo (Hashimon). Sin args abre el panel. Subcomandos Towny siguen disponibles.",
-	privs = orig_town.privs or { towny = true },
+	privs = {},
 	func = function(name, param)
 		param = trim(param)
 		if param == "" or param == "desk" or param == "menu" or param == "ui" then
@@ -105,14 +110,22 @@ core.override_chatcommand("town", {
 			end
 		end
 
-		return orig_town.func(name, param)
+		if param:sub(1, 4) == "new " or param == "new" then
+			core.log("action", "[hashimon_town_desk] /town new from " .. name .. " param=" .. param)
+		end
+		local ok, a, b = pcall(orig_town_func, name, param)
+		if not ok then
+			core.log("error", "[hashimon_town_desk] /town failed: " .. tostring(a))
+			return false, "Error en /town: " .. tostring(a)
+		end
+		return a, b
 	end,
 })
 
 core.register_chatcommand("pueblo", {
 	params = core.registered_chatcommands["town"].params,
 	description = "Alias de /town — abre el Escritorio del pueblo.",
-	privs = { towny = true },
+	privs = {},
 	func = core.registered_chatcommands["town"].func,
 })
 

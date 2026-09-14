@@ -91,29 +91,30 @@ end
 ------------------------------------------------------------------------
 -- The tower node
 ------------------------------------------------------------------------
+-- Mesh: models/hashimon_vibing_spire.glb (stripped, ~85KB) + albedo tile.
+-- glTF height ≈ 1.0 → altura_nodos = 1.0 * visual_scale / 10.
+-- visual_scale 80 ≈ 8 nodos de alto (aguja de energía).
 core.register_node("hashimon_vibing:tower", {
 	description = "Torre de Vibing",
-	-- Lightweight nodebox placeholder. The 3D "Arcane Energy Spire" mesh is available
-	-- (models/hashimon_vibing_spire.glb + tools/install_model.py) but is TEMPORARILY
-	-- disabled: the 6.4MB glb with embedded textures adds GPU/memory load, and the target
-	-- client has a pre-existing OpenGL-context instability (see README "Tuning the look").
-	-- Re-enable the mesh drawtype only after (a) the client's GL context is stable and
-	-- (b) the glb is stripped of its embedded textures so the media is light.
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{ -0.30, -0.5, -0.30, 0.30, 0.5, 0.30 },   -- shaft
-			{ -0.45, -0.5, -0.45, 0.45, -0.35, 0.45 }, -- base
-			{ -0.45, 0.35, -0.45, 0.45, 0.5, 0.45 },   -- crown
-		},
-	},
-	tiles = { "[fill:16x16:#5FE0FF" },
-	use_texture_alpha = "opaque",
+	drawtype = "mesh",
+	mesh = "hashimon_vibing_spire.glb",
+	tiles = { "hashimon_vibing_spire.jpg" },
+	use_texture_alpha = "clip",
+	visual_scale = 80,
 	light_source = 13,
 	paramtype = "light",
+	paramtype2 = "facedir",
 	is_ground_content = false,
 	groups = { cracky = 2, oddly_breakable_by_hand = 2 },
+	-- Collide/select as a tall shaft so the player can dig the place node.
+	collision_box = {
+		type = "fixed",
+		fixed = { -0.45, -0.5, -0.45, 0.45, 7.5, 0.45 },
+	},
+	selection_box = {
+		type = "fixed",
+		fixed = { -0.45, -0.5, -0.45, 0.45, 7.5, 0.45 },
+	},
 
 	on_place = function(itemstack, placer, pointed)
 		if not placer or not placer:is_player() or not pointed or pointed.type ~= "node" then
@@ -135,8 +136,15 @@ core.register_node("hashimon_vibing:tower", {
 			core.chat_send_player(name, "Tu pueblo ya tiene su Torre de Vibing (límite V1).")
 			return itemstack
 		end
-		-- Passed the gate: place the node normally; after_place_node registers it.
-		return core.item_place_node(itemstack, placer, pointed)
+		-- Place, then always consume one. Creative mode otherwise keeps the stack
+		-- (Hashiworld runs with creative_mode=true), so the player would keep a
+		-- second tower after a successful plant.
+		local count_before = itemstack:get_count()
+		local leftover = core.item_place_node(itemstack, placer, pointed)
+		if towers[poskey(pos)] and leftover:get_count() >= count_before then
+			leftover:take_item(1)
+		end
+		return leftover
 	end,
 
 	after_place_node = function(pos, placer)
@@ -183,7 +191,7 @@ core.register_node("hashimon_vibing:tower", {
 ------------------------------------------------------------------------
 core.register_chatcommand("vibing", {
 	description = "Obtén una Torre de Vibing para plantar en tu territorio.",
-	privs = { towny = true },
+	privs = {},
 	func = function(name)
 		local town = officer_town(name)
 		if not town then

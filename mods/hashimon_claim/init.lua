@@ -73,7 +73,7 @@ end
 core.register_chatcommand("expand", {
 	params = "",
 	description = "Reclama el bloque libre junto a tu territorio más cercano a donde estás (Towny, sin exigir precisión).",
-	privs = { towny = true },
+	privs = {},
 	func = function(name, param)
 		local player = core.get_player_by_name(name)
 		if not player then

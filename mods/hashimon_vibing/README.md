@@ -5,61 +5,29 @@ coordinate (docs/VIBING_V1.md §3). The mod pushes a projection of every tower t
 the API so the website can draw it on the map with the tier its coordinate yields.
 It only *reads* Towny and pushes a projection — it never edits Towny.
 
-## The tower's 3D model — how the asset reaches Luanti (the deploy process)
-
-> **Status: the 3D mesh is TEMPORARILY DISABLED.** The tower currently renders as a
-> lightweight nodebox. The Meshy "Arcane Energy Spire" `.glb` (6.4MB, with embedded
-> textures) is parked in `tools/asset/` — a directory Luanti does *not* ship as media —
-> so it no longer downloads to clients. Re-enable it only after (a) the target client's
-> OpenGL-context instability is resolved and (b) the glb is stripped of its embedded
-> textures so the media is light. To re-enable: run `tools/install_model.py tools/asset/…glb`
-> (recreates `models/`+`textures/`) and switch the node's `drawtype` back to `"mesh"`
-> (see the commented block in `init.lua`).
-
-When active, the tower renders a real 3D asset (a Meshy "Arcane Energy Spire") as a
-**mesh node**. The model and its texture live in this mod:
+## The tower's 3D model
 
 ```
-models/hashimon_vibing_spire.glb     glTF geometry (Luanti reads this directly)
-textures/hashimon_vibing_spire.jpg   base-color texture (the tile the node paints with)
+models/hashimon_vibing_spire.glb     stripped geometry (~85KB — no embedded images)
+textures/hashimon_vibing_spire.jpg   base-color albedo (512px)
+tools/asset/                         original Meshy export (NOT shipped to clients)
 ```
 
-**Luanti ships a mod's `models/` and `textures/` to every client automatically when
-the mod loads.** So there is no separate runtime upload: once these two files are
-committed, deploying the mod *is* how the spire reaches Luanti. `init.lua` already
-references these exact filenames.
+Luanti ships `models/` and `textures/` to every client on mod load. Never put the
+raw Meshy `.glb` (multi-MB with embedded JPEGs) in `models/` — that was the lag.
 
-### To update the model from a new export
-
-Drop the new `.glb` anywhere and run the installer — it copies the geometry in and
-extracts the base-color image (Luanti cannot read a glTF's embedded images, and it
-drops metallic/roughness + normal maps, so only the albedo is pulled out and, on
-macOS, downscaled):
+### Update from a new Meshy export
 
 ```bash
 python3 tools/install_model.py /path/to/new_model.glb
-git add models/ textures/
 ```
 
-Stdlib only (plus optional `sips` on macOS). The filenames are fixed, so a new
-export needs no Lua change.
+That parks the source under `tools/asset/`, extracts + boosts the albedo, and runs
+`scripts/glb_for_luanti.py --keep-times` so the client mesh stays light.
 
-### The deploy checklist (from Cursor)
+Restart Luanti after changing `init.lua` (node defs only load at startup).
 
-1. Run `tools/install_model.py` if the asset changed; commit `models/` + `textures/`.
-2. Deploy the repo so the server has this mod (it is loaded by path — see the
-   world's `world.mt`: `load_mod_hashimon_vibing = mods/hashimon_vibing`).
-3. **Restart the Luanti server.** `core.register_node` runs at load time and Luanti
-   has **no hot reload for mod code**, so the node's new mesh drawtype only takes
-   effect on a restart. (Media files themselves do reload, but the node *definition*
-   does not.) Clients then download the model on their next join.
+### Tuning
 
-### Tuning the look
-
-`visual_scale` (currently `18`) and how deep the spire roots into the ground are
-the only **by-eye** values — glTF is 10 mesh units = 1 node and the model is centered,
-so a tall scale roots the base a little underground (fitting for an energy-tap
-derrick). Adjust `visual_scale` in `init.lua` and restart to change it permanently.
-If it renders untextured, the tile filename in `tiles` does not match the file in
-`textures/`; if it renders flat/wrong-colored, that look lived in the PBR maps Luanti
-discards and has to be baked into the base-color texture instead.
+`visual_scale` in `init.lua` (currently **80**): mesh height ≈ 1.0 glTF unit →
+`altura_nodos ≈ visual_scale / 10` (~8 nodes). Raise/lower and restart.
