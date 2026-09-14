@@ -6,6 +6,8 @@
 
 core.register_privilege("towny", {
 	description = "Has access to towny mod features.",
+	give_to_singleplayer = true,
+	give_to_admin = true,
 })
 
 core.register_privilege("townyadmin", {
@@ -293,6 +295,13 @@ local function create_resident_info_str(resident)
 	str[#str + 1] = "\n"
 
 	return table.concat(str)
+end
+
+local function strip_wrapping_quotes(str)
+	if not str then
+		return str
+	end
+	return str:match("^'(.*)'$") or str:match('^"(.*)"$') or str
 end
 
 local function is_invalid_input(str)
@@ -712,7 +721,7 @@ core.register_chatcommand("town", {
 		get_registered_flags_params_str(towny.registered_town_flags),
 		") || (invite <name> | sent | (revoke <name>)) || leave || (kick <name>) || (trust (add <name>) | (remove <name> | all))]"}),
 	description = "Escritorio del pueblo (sin args) o comandos legacy. Prefer /town para el panel.",
-	privs = {towny = true},
+	privs = {},
 	func =
 
 function (player_name, params)
@@ -900,6 +909,10 @@ function (player_name, params)
 
 	elseif pa[1] == "new" then
 		if pa[2] then
+			if not resident then
+				resident = towny.resident.new(player_name)
+			end
+			pa[2] = strip_wrapping_quotes(pa[2])
 			if resident.town then
 				return false, "You're already in a town!"
 			end
@@ -1326,7 +1339,7 @@ end})
 core.register_chatcommand("pueblo", {
 	params = core.registered_chatcommands["town"].params,
 	description = "Alias de /town — abre el Escritorio del pueblo.",
-	privs = { towny = true },
+	privs = {},
 	func = core.registered_chatcommands["town"].func,
 })
 

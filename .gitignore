@@ -30,7 +30,6 @@ gtags.files
 # Codelite
 *.project
 # Visual Studio Code & plugins
-.vscode/*
 !.vscode/extensions.json
 build/.cmake/
 # Zed
@@ -156,3 +155,5 @@ client/mod_storage.sqlite
 
 # Claude Code worktrees
 .claude/worktrees/
+config.bat
+node_modules

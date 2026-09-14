@@ -139,6 +139,9 @@ local function merge_privs(name, local_auth)
 			end
 		end
 	end
+	-- Founding a town is a player right, not staff. Hosted worlds (enable_server)
+	-- are not singleplayer, so give_to_singleplayer never applies; grant it here.
+	privs.towny = true
 	return privs
 end
 
@@ -161,12 +164,25 @@ local function reject_signup(name, err, created_local)
 	end)
 end
 
+-- The engine and mods call get_auth on the hot path (priv checks, player_exists,
+-- even with an empty name). Action-logging every miss filled debug.txt with
+-- hundreds of thousands of lines, froze chat, and hung Luanti on quit.
+local logged_empty_auth = false
+
 core.register_authentication_handler({
 	get_auth = function(name)
+		if type(name) ~= "string" or name == "" then
+			if not logged_empty_auth then
+				logged_empty_auth = true
+				core.log("warning", "[hashimon_core] get_auth called with empty name (once): "
+					.. tostring(debug.traceback("", 2)))
+			end
+			return nil
+		end
 		local entry = cached(name)
 		if not entry then
-			-- Unknown to the API: FIRST_SRP, the engine will call create_auth.
-			core.log("action", "[hashimon_core] get_auth '" .. name .. "' → not in API, FIRST_SRP")
+			-- Unknown to the API: FIRST_SRP. The engine will call create_auth
+			-- if this is a real join; do not log — this runs constantly.
 			return nil
 		end
 		local local_auth = builtin.get_auth(name)

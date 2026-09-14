@@ -235,9 +235,10 @@ end
 
 --- ¿Está pisando un asentamiento? Es percepción pura —dónde está él— y por eso
 --- es legítimo consultarlo: no es saber de qué pueblo es otro, es mirar al suelo.
+--- Towny claims (no mg_villages): un bloque reclamado cuenta como asentamiento.
 function hashimon_alen.in_settlement(pos)
-	if not (mg_villages and mg_villages.get_town_id_at_pos) then return false end
-	return mg_villages.get_town_id_at_pos(pos) ~= nil
+	if not (towny and towny.get_block_by_pos) then return false end
+	return towny.get_block_by_pos(pos) ~= nil
 end
 
 -- --------------------------------------------------------------------------

@@ -11,6 +11,7 @@ dofile(core.get_modpath("hashimon_core") .. "/api.lua")
 hashimon.set_http(http)
 hashimon.set_http = nil
 dofile(core.get_modpath("hashimon_core") .. "/auth_handler.lua")
+dofile(core.get_modpath("hashimon_core") .. "/protect_guard.lua")
 dofile(core.get_modpath("hashimon_core") .. "/login_form.lua")
 dofile(core.get_modpath("hashimon_core") .. "/session.lua")
 dofile(core.get_modpath("hashimon_core") .. "/registry.lua")
